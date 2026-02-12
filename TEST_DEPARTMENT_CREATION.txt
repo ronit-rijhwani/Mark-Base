@@ -1,0 +1,99 @@
+TESTING DEPARTMENT CREATION
+===========================
+
+STEP 1: Open the admin portal
+------------------------------
+1. Open browser: http://localhost:3000
+2. Login as admin
+
+STEP 2: Open browser Developer Tools
+-------------------------------------
+1. Press F12 (or Right-click → Inspect)
+2. Go to "Console" tab
+3. Keep it open
+
+STEP 3: Try creating a department
+----------------------------------
+1. Go to: Academic Structure → Departments
+2. Click "+ Add Department"
+3. Enter:
+   - Department Name: Electrical Engineering
+   - Department Code: EE
+4. Click "Create"
+
+STEP 4: Check what happens
+---------------------------
+Look at BOTH places:
+
+A) On the page:
+   - Green message = Success ✅
+   - Red message = Error ❌
+
+B) In Console tab (F12):
+   - Red error = Check the message
+   - No error = Success
+
+COMMON ERRORS AND SOLUTIONS
+============================
+
+Error: "UNIQUE constraint failed: departments.code"
+Solution: The code already exists. Try different code like:
+   - ELEC, EC, ELECT (for Electrical)
+   - MECH (for Mechanical)
+   - CIVIL (for Civil)
+
+Error: "Network Error" or "Failed to fetch"
+Solution: Backend not running. Start it:
+   cd Markbase/backend
+   python run.py
+
+Error: Nothing happens when you click Create
+Solution: Check console for JavaScript error
+
+VERIFY BACKEND IS WORKING
+==========================
+
+Test backend directly in browser:
+1. Open: http://localhost:8000/docs
+2. Find: POST /api/admin/departments
+3. Click "Try it out"
+4. Enter:
+   {
+     "name": "Test Department",
+     "code": "TD"
+   }
+5. Click "Execute"
+
+If this works → Backend is fine, issue is in frontend
+If this fails → Backend problem
+
+CURRENT DEPARTMENT CODES IN DATABASE
+=====================================
+COMP - Computer Engineering
+IT - Information Technology  
+AO - Automation
+Engineering - Computer (error in data)
+CO - Computer Engineering (duplicate)
+MECH - Mechanical Engineering
+TEST123 - Test Dept
+
+⚠️ DO NOT use these codes - they already exist!
+
+USE THESE CODES (Available)
+============================
+EE - Electrical Engineering
+EC - Electronics Engineering
+CIVIL - Civil Engineering
+CHEM - Chemical Engineering
+ARCH - Architecture
+AUTO - Automobile Engineering
+
+AFTER YOU FIX
+=============
+Once you find the error in console, you'll see something like:
+
+"UNIQUE constraint failed: departments.code"
+
+This means: Change the code to something unique!
+
+Try: EE, ELEC, ELECTRICAL, etc.
