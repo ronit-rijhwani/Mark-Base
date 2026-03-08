@@ -1,13 +1,3 @@
-/**
- * Staff Dashboard - Day-wise Attendance Management
- * Features:
- * - Turn On/Off attendance for assigned division
- * - Mark attendance with face recognition
- * - Manual attendance marking
- * - View real-time attendance statistics
- * - Grace period: 9:15 AM - 9:30 AM
- */
-
 import React, { useState, useEffect, useRef } from 'react'
 import Webcam from 'react-webcam'
 import { staffAPI, daywiseAttendanceAPI, adminAPI } from '../services/api'
@@ -17,15 +7,17 @@ function StaffDashboard({ user, onLogout }) {
   const [division, setDivision] = useState(null)
   const [students, setStudents] = useState([])
   const [attendanceRecords, setAttendanceRecords] = useState([])
+  const [activeSession, setActiveSession] = useState(null)
   const [isAttendanceActive, setIsAttendanceActive] = useState(false)
   const [showCamera, setShowCamera] = useState(false)
+  const [isCapturing, setIsCapturing] = useState(false)
   const [message, setMessage] = useState({ type: '', text: '' })
   const [loading, setLoading] = useState(true)
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [stats, setStats] = useState({ present: 0, late: 0, absent: 0, unmarked: 0 })
   const webcamRef = useRef(null)
 
-  // For division selector (when staff has no pre-assigned division)
+  // For division selector
   const [showDivisionSelector, setShowDivisionSelector] = useState(false)
   const [allClasses, setAllClasses] = useState([])
   const [allDivisions, setAllDivisions] = useState([])
@@ -40,8 +32,30 @@ function StaffDashboard({ user, onLogout }) {
     if (division) {
       loadStudents()
       loadTodayAttendance()
+      checkActiveSession()
     }
   }, [division, selectedDate])
+
+  const checkActiveSession = async () => {
+    if (selectedDate !== new Date().toISOString().split('T')[0]) {
+      setIsAttendanceActive(false)
+      setActiveSession(null)
+      return
+    }
+    
+    try {
+      const session = await staffAPI.getActiveSession(user.staff_id)
+      if (session && session.status === 'open' && session.division_id === division.id) {
+        setActiveSession(session)
+        setIsAttendanceActive(true)
+      } else {
+        setActiveSession(null)
+        setIsAttendanceActive(false)
+      }
+    } catch (err) {
+      console.error('Failed to check active session', err)
+    }
+  }
 
   useEffect(() => {
     if (showDivisionSelector) {
@@ -68,7 +82,6 @@ function StaffDashboard({ user, onLogout }) {
           class_name: staffData.class_name
         })
       } else {
-        // No pre-assigned division � show selector
         setShowDivisionSelector(true)
       }
     } catch (err) {
@@ -83,13 +96,8 @@ function StaffDashboard({ user, onLogout }) {
   const loadAllClasses = async () => {
     try {
       const data = await adminAPI.getClasses()
-      // Remove duplicates based on class ID
-      const uniqueClasses = data.filter((cls, index, self) =>
-        index === self.findIndex((c) => c.id === cls.id)
-      )
-      setAllClasses(uniqueClasses)
+      setAllClasses(data)
     } catch (err) {
-      console.error('Failed to load classes:', err)
       setMessage({ type: 'error', text: 'Failed to load classes.' })
     }
   }
@@ -100,7 +108,6 @@ function StaffDashboard({ user, onLogout }) {
       setAllDivisions(data)
       setSelectedDivisionId('')
     } catch (err) {
-      console.error('Failed to load divisions:', err)
       setMessage({ type: 'error', text: 'Failed to load divisions.' })
     }
   }
@@ -154,14 +161,29 @@ function StaffDashboard({ user, onLogout }) {
     setStats(stats)
   }
 
-  const handleToggleAttendance = () => {
-    setIsAttendanceActive(!isAttendanceActive)
-    if (!isAttendanceActive) {
-      setMessage({ type: 'success', text: 'Attendance is now active. Students can mark their attendance.' })
+  const handleTurnOnAttendance = async () => {
+    try {
+      const session = await staffAPI.openSession(division.id, user.staff_id)
+      setActiveSession(session)
+      setIsAttendanceActive(true)
       setShowCamera(true)
-    } else {
-      setMessage({ type: 'info', text: 'Attendance has been turned off.' })
+      setMessage({ type: 'success', text: 'Attendance session opened successfully. Students can now scan.' })
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.detail || 'Failed to open attendance session' })
+    }
+  }
+  
+  const handleTurnOffAttendance = async () => {
+    if (!activeSession) return
+    try {
+      await staffAPI.closeSession(activeSession.id, user.staff_id)
+      setActiveSession(null)
+      setIsAttendanceActive(false)
       setShowCamera(false)
+      setMessage({ type: 'info', text: 'Attendance session closed.' })
+      loadTodayAttendance() // Refresh to show absent status for unmarked
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.detail || 'Failed to close attendance session' })
     }
   }
 
@@ -169,20 +191,33 @@ function StaffDashboard({ user, onLogout }) {
     if (!webcamRef.current) return
 
     try {
+      setIsCapturing(true)
+      setMessage({ type: 'info', text: 'Verifying face... Please wait ⏳' })
+
       const imageSrc = webcamRef.current.getScreenshot()
       const blob = await fetch(imageSrc).then(r => r.blob())
       const file = new File([blob], 'attendance.jpg', { type: 'image/jpeg' })
 
       const result = await daywiseAttendanceAPI.markAttendanceWithFace(user.staff_id, file)
       
-      setMessage({ type: 'success', text: `Attendance marked for ${result.student_name}` })
-      loadTodayAttendance()
+      setMessage({ type: 'success', text: `✅ Attendance marked for ${result.student_name}!` })
+      // View closes itself for 3 seconds, then resets to the 'Open Camera' button
+      setTimeout(() => {
+        setMessage({ type: '', text: '' })
+        setIsCapturing(false)
+        setShowCamera(false)
+      }, 4000) // Give them 4 seconds to read the result
     } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.detail || 'Failed to mark attendance' })
+      setMessage({ type: 'error', text: `❌ ${err.response?.data?.detail || 'Failed to mark attendance'}` })
+      setTimeout(() => {
+        setMessage({ type: '', text: '' })
+        setIsCapturing(false)
+        setShowCamera(false)
+      }, 4000)
     }
   }
 
-  const handleManualMark = async (studentId, status) => {
+  const handleManualMark = async (studentId) => {
     try {
       const currentTime = new Date().toTimeString().split(' ')[0]
       
@@ -200,27 +235,10 @@ function StaffDashboard({ user, onLogout }) {
     }
   }
 
-  const handleBulkMark = async (presentStudentIds) => {
-    try {
-      await daywiseAttendanceAPI.bulkMarkAttendance({
-        division_id: division.id,
-        date: selectedDate,
-        marked_by: user.staff_id,
-        present_student_ids: presentStudentIds
-      })
-      
-      setMessage({ type: 'success', text: 'Bulk attendance marked successfully' })
-      loadTodayAttendance()
-    } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.detail || 'Failed to mark bulk attendance' })
-    }
-  }
-
   if (loading) {
     return <div className="loading">Loading...</div>
   }
 
-  // Show division selector if staff has no pre-assigned division
   if (showDivisionSelector) {
     return (
       <div className="dashboard">
@@ -250,7 +268,7 @@ function StaffDashboard({ user, onLogout }) {
               <select
                 value={selectedClassId}
                 onChange={e => setSelectedClassId(e.target.value)}
-                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px' }}
+                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }}
               >
                 <option value="">-- Select Class --</option>
                 {allClasses.map(cls => (
@@ -265,7 +283,7 @@ function StaffDashboard({ user, onLogout }) {
                 value={selectedDivisionId}
                 onChange={e => setSelectedDivisionId(e.target.value)}
                 disabled={!selectedClassId || allDivisions.length === 0}
-                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px' }}
+                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }}
               >
                 <option value="">-- Select Division --</option>
                 {allDivisions.map(div => (
@@ -274,11 +292,7 @@ function StaffDashboard({ user, onLogout }) {
               </select>
             </div>
 
-            <button
-              onClick={handleDivisionSelect}
-              className="btn btn-success"
-              style={{ width: '100%', padding: '12px', fontSize: '16px' }}
-            >
+            <button onClick={handleDivisionSelect} className="btn btn-success" style={{ width: '100%', padding: '12px' }}>
               Proceed to Attendance
             </button>
           </div>
@@ -287,17 +301,14 @@ function StaffDashboard({ user, onLogout }) {
     )
   }
 
-  const today = new Date().toISOString().split('T')[0]
-  const isToday = selectedDate === today
+  const todayStr = new Date().toISOString().split('T')[0]
+  const isTodayDate = selectedDate === todayStr
 
-  // Attendance time window: 9:00 AM - 9:45 AM
   const now = new Date()
-  const currentHour = now.getHours()
-  const currentMinute = now.getMinutes()
-  const currentTotalMinutes = currentHour * 60 + currentMinute
-  const windowStart = 9 * 60        // 9:00 AM
-  const windowEnd = 9 * 60 + 45     // 9:45 AM
-  const isWithinAttendanceWindow = currentTotalMinutes >= windowStart && currentTotalMinutes <= windowEnd
+  const currentTotalMinutes = now.getHours() * 60 + now.getMinutes()
+  const windowStart = 9 * 60 + 15    // 9:15 AM
+  const windowEnd = 9 * 60 + 45      // 9:45 AM
+  
   const isBeforeWindow = currentTotalMinutes < windowStart
   const isAfterWindow = currentTotalMinutes > windowEnd
 
@@ -322,171 +333,108 @@ function StaffDashboard({ user, onLogout }) {
       </div>
 
       <div className="dashboard-content">
-        {message.text && (
+        <div className="alert alert-warning" style={{ backgroundColor: '#fff3cd', color: '#856404', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #ffeeba', fontWeight: 'bold' }}>
+          📌 Note: Session must be turned on by the staff at exactly 9:15 AM. Window closes at 9:45 AM.
+        </div>
+
+        {message.text && !isAttendanceActive && (
           <div className={`message message-${message.type}`}>
             {message.text}
           </div>
         )}
 
-        {/* Attendance Control */}
-        <div className="dashboard-card">
-          <div className="card-header">
-            <h2>Attendance Control</h2>
-            <div className="date-selector">
-              <label>Date: </label>
-              <input
-                type="date"
-                value={selectedDate}
-                max={today}
-                onChange={(e) => setSelectedDate(e.target.value)}
-              />
-            </div>
-          </div>
+        {!isAttendanceActive ? (
+           <div style={{ textAlign: 'center', marginTop: '50px' }}>
+             <button 
+                onClick={handleTurnOnAttendance} 
+                disabled={isBeforeWindow || isAfterWindow}
+                className={`btn btn-lg ${(!isBeforeWindow && !isAfterWindow) ? 'btn-success' : 'btn-secondary'}`} 
+                style={{ 
+                  padding: '20px 50px', 
+                  fontSize: '24px', 
+                  cursor: (isBeforeWindow || isAfterWindow) ? 'not-allowed' : 'pointer',
+                  opacity: (isBeforeWindow || isAfterWindow) ? 0.6 : 1
+                }}
+             >
+                🟢 Turn On Attendance Session
+             </button>
 
-          {isToday && (
-            <div className="attendance-toggle">
-              {isWithinAttendanceWindow ? (
-                <>
-                  <button
-                    onClick={handleToggleAttendance}
-                    className={`btn btn-lg ${isAttendanceActive ? 'btn-danger' : 'btn-success'}`}
-                  >
-                    {isAttendanceActive ? '?? Turn Off Attendance' : '?? Turn On Attendance'}
-                  </button>
-                  {isAttendanceActive && (
-                    <p className="attendance-status">
-                      ? Attendance is active. Grace period: 9:15 AM - 9:30 AM
-                    </p>
-                  )}
-                </>
-              ) : isBeforeWindow ? (
-                <p style={{ color: '#888', fontStyle: 'italic', margin: '10px 0' }}>
-                  ? Attendance window opens at 9:00 AM.
+             {isBeforeWindow && (
+                <p style={{ color: '#888', fontStyle: 'italic', fontSize: '18px', marginTop: '20px' }}>
+                  ⏳ Attendance window opens at 9:15 AM.
                 </p>
-              ) : (
-                <p style={{ color: '#e53935', fontWeight: '600', margin: '10px 0' }}>
-                  ?? Attendance window has closed (cutoff: 9:45 AM). You can still view records below.
+             )}
+
+             {isAfterWindow && (
+                <p style={{ color: '#e53935', fontWeight: '600', fontSize: '18px', marginTop: '20px' }}>
+                  🚫 Attendance will start tomorrow at 9:15 AM.
                 </p>
-              )}
-            </div>
-          )}
-
-          {/* Statistics */}
-          <div className="stats-grid">
-            <div className="stat-card stat-total">
-              <h3>Total Students</h3>
-              <p className="stat-number">{students.length}</p>
-            </div>
-            <div className="stat-card stat-present">
-              <h3>Present</h3>
-              <p className="stat-number">{stats.present}</p>
-            </div>
-            <div className="stat-card stat-late">
-              <h3>Late</h3>
-              <p className="stat-number">{stats.late}</p>
-            </div>
-            <div className="stat-card stat-absent">
-              <h3>Absent</h3>
-              <p className="stat-number">{stats.absent}</p>
-            </div>
-            <div className="stat-card stat-unmarked">
-              <h3>Unmarked</h3>
-              <p className="stat-number">{stats.unmarked}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Face Recognition Camera */}
-        {isAttendanceActive && (
-          <div className="dashboard-card">
-            <h2>Face Recognition</h2>
-            <div className="camera-section">
-              <button
-                onClick={() => setShowCamera(!showCamera)}
-                className="btn btn-primary"
-              >
-                {showCamera ? '?? Hide Camera' : '?? Show Camera'}
-              </button>
-
-              {showCamera && (
-                <div className="camera-container">
-                  <Webcam
-                    ref={webcamRef}
-                    screenshotFormat="image/jpeg"
-                    width={640}
-                    height={480}
-                  />
-                  <button 
-                    onClick={handleMarkAttendanceWithFace} 
-                    className="btn btn-success btn-lg"
-                  >
-                    ?? Capture &amp; Mark Attendance
+             )}
+           </div>
+        ) : (
+          <>
+            <div className="dashboard-card">
+              <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h2>Attendance Status</h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                  <button onClick={handleTurnOffAttendance} className="btn btn-lg btn-danger">
+                    🔴 Turn Off Attendance
                   </button>
+                  <p className="attendance-status" style={{ margin: 0, color: '#28a745', fontWeight: 'bold' }}>
+                    ✅ Session is active.
+                    <br/>
+                    <span style={{ fontSize: '0.9em', color: '#666', fontWeight: 'normal' }}>
+                      Present deadline: 9:30 AM | Late deadline: 9:45 AM
+                    </span>
+                  </p>
                 </div>
-              )}
+              </div>
             </div>
-          </div>
-        )}
 
-        {/* Student List */}
-        <div className="dashboard-card full-width">
-          <h2>Student Attendance - {selectedDate}</h2>
-          
-          <div className="attendance-table">
-            <table>
-              <thead>
-                <tr>
-                  <th>Roll No</th>
-                  <th>Student Name</th>
-                  <th>Status</th>
-                  <th>Check-in Time</th>
-                  {isToday && isAttendanceActive && <th>Actions</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {students.length === 0 ? (
-                  <tr><td colSpan="5" style={{ textAlign: 'center', padding: '20px', color: '#888' }}>No students found in this division.</td></tr>
+            {isAttendanceActive && (
+              <div className="dashboard-card" style={{ textAlign: 'center' }}>
+                <h2>Face Recognition - Active</h2>
+                
+                {isCapturing ? (
+                  <div style={{ margin: '40px 0', padding: '40px', background: '#f8f9fa', borderRadius: '12px', border: '2px solid #ddd' }}>
+                    <h3 style={{ fontSize: '26px', color: message.type === 'success' ? '#28a745' : message.type === 'error' ? '#dc3545' : '#007bff' }}>
+                      {message.text}
+                    </h3>
+                  </div>
+                ) : showCamera ? (
+                  <div className="camera-section">
+                    <div className="camera-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', marginTop: '15px' }}>
+                      <Webcam
+                        ref={webcamRef}
+                        screenshotFormat="image/jpeg"
+                        width={640}
+                        height={480}
+                        style={{ borderRadius: '8px', border: '3px solid #ddd' }}
+                      />
+                      <button onClick={handleMarkAttendanceWithFace} className="btn btn-success btn-lg" style={{ width: '640px', padding: '15px', fontSize: '20px' }}>
+                        📸 Capture Face &amp; Mark Attendance
+                      </button>
+                    </div>
+                  </div>
                 ) : (
-                  students.map(student => {
-                    const record = attendanceRecords.find(r => r.student_id === student.id)
-                    const status = record?.status || 'unmarked'
-                    const checkInTime = record?.check_in_time || '-'
-
-                    return (
-                      <tr key={student.id}>
-                        <td>{student.roll_number}</td>
-                        <td>{student.first_name} {student.last_name}</td>
-                        <td>
-                          <span className={`badge badge-${status}`}>
-                            {status.toUpperCase()}
-                          </span>
-                        </td>
-                        <td>{checkInTime}</td>
-                        {isToday && isAttendanceActive && (
-                          <td>
-                            {status === 'unmarked' && (
-                              <button
-                                onClick={() => handleManualMark(student.id)}
-                                className="btn btn-sm btn-primary"
-                              >
-                                Mark Present
-                              </button>
-                            )}
-                          </td>
-                        )}
-                      </tr>
-                    )
-                  })
+                  <div style={{ padding: '60px 20px', backgroundColor: '#f9f9f9', borderRadius: '10px', marginTop: '20px' }}>
+                    <p style={{ fontSize: '18px', color: '#555', marginBottom: '20px' }}>Ready for the next student to scan.</p>
+                    <button 
+                      onClick={() => setShowCamera(true)} 
+                      className="btn btn-primary btn-lg"
+                      style={{ padding: '20px 40px', fontSize: '22px' }}
+                    >
+                      📷 Turn On Camera to Scan Face
+                    </button>
+                  </div>
                 )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   )
 }
 
 export default StaffDashboard
-
-

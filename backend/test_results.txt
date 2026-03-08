@@ -1,0 +1,26 @@
+=== TEST 1: Direct bcrypt/passlib verify ===
+  staff1 (id=2): verify('staff123') = True
+  staff2 (id=3): verify('staff123') = True
+  staff3 (id=4): verify('staff123') = True
+  staff4 (id=5): verify('staff123') = True
+  staff5 (id=6): verify('staff123') = True
+  stafftrail (id=18): verify('staff123') = False
+  Staff_1 (id=19): verify('staff123') = True
+
+=== TEST 2: Staff table entries ===
+  Total staff entries: 1
+  staff.id=1, user_id=19, staff_id=01, name=Staff_1, username=Staff_1
+
+=== TEST 3: Orphaned staff users (no staff table entry) ===
+  Orphaned count: 6
+  user_id=2, username=staff1
+  user_id=3, username=staff2
+  user_id=4, username=staff3
+  user_id=5, username=staff4
+  user_id=6, username=staff5
+  user_id=18, username=stafftrail
+
+=== TEST 4: Full auth simulation ===
+  Login 'staff1': {'user_id': 2, 'username': 'staff1', 'role': 'staff', 'token': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoic3RhZmYiLCJleHAiOjE3NzI5ODk4NDZ9.bCLt934T3xUCybzYCvbTF3Hks1DI0V5xZJtQELVvA6E'}
+  Login 'Staff_1': {'user_id': 19, 'username': 'Staff_1', 'role': 'staff', 'token': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxOSwicm9sZSI6InN0YWZmIiwiZXhwIjoxNzcyOTg5ODQ2fQ.AAof7yzPg-lc9xNS4jdIeZHVSRQ1xXtfKFxTpj-Aaoo', 'staff_id': 1, 'name': 'Staff_1 Trial'}
+  Login 'stafftrail': None

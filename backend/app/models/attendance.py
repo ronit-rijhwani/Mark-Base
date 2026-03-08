@@ -71,3 +71,25 @@ class LeaveRequest(Base):
     
     student = relationship("Student", back_populates="leave_requests")
     approver = relationship("Staff", back_populates="approved_leaves")
+
+
+class AttendanceSession(Base):
+    """Tracks whether attendance is currently active for a division on a given day.
+    Staff starts a session → students scan faces → session auto-closes at 9:45 AM."""
+    __tablename__ = 'attendance_sessions'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    division_id = Column(Integer, ForeignKey('divisions.id', ondelete='CASCADE'), nullable=False)
+    staff_id = Column(Integer, ForeignKey('staff.id', ondelete='SET NULL'))
+    date = Column(Date, nullable=False)
+    status = Column(String(10), default='open')  # open, closed
+    opened_at = Column(DateTime, default=datetime.utcnow)
+    closed_at = Column(DateTime, nullable=True)
+    
+    __table_args__ = (
+        UniqueConstraint('division_id', 'date', name='uq_session_division_date'),
+        CheckConstraint("status IN ('open', 'closed')"),
+    )
+    
+    division = relationship("Division")
+    staff = relationship("Staff")

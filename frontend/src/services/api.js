@@ -1,4 +1,4 @@
-﻿import axios from 'axios'
+import axios from 'axios'
 
 const API_BASE_URL = 'http://localhost:8000'
 
@@ -212,11 +212,39 @@ export const adminAPI = {
 // ===========================
 
 export const staffAPI = {
-  // Get all students in staff's division
-  getDivisionStudents: async (divisionId) => {
+  // Get staff member details by ID
+  getStaffById: async (staffId) => {
+    const response = await api.get(`/api/admin/staff/${staffId}`)
+    return response.data
+  },
+
+  // Get students by division
+  getStudentsByDivision: async (divisionId) => {
     const response = await api.get(`/api/staff/division/${divisionId}/students`)
     return response.data
   },
+
+  // Open day-wise attendance session
+  openSession: async (divisionId, staffId) => {
+    const response = await api.post(`/api/staff/open-session`, { division_id: divisionId }, {
+      params: { staff_id: staffId }
+    })
+    return response.data
+  },
+
+  // Close attendance session
+  closeSession: async (sessionId, staffId) => {
+    const response = await api.post(`/api/staff/close-session/${sessionId}`, null, {
+      params: { staff_id: staffId }
+    })
+    return response.data
+  },
+
+  // Get active session for today
+  getActiveSession: async (staffId) => {
+    const response = await api.get(`/api/staff/active-session/${staffId}`)
+    return response.data
+  }
 }
 
 
@@ -271,6 +299,31 @@ export const daywiseAttendanceAPI = {
   markAttendance: async (data) => {
     const response = await api.post('/api/attendance/daywise/mark', data)
     return response.data
+  },
+
+  // Mark attendance with face recognition
+  markAttendanceWithFace: async (markedBy, imageFile) => {
+    const formData = new FormData()
+    formData.append('image', imageFile)
+
+    const faceResponse = await api.post('/api/auth/login/face', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+
+    const currentTime = new Date().toTimeString().split(' ')[0]
+
+    const attendanceResponse = await api.post('/api/attendance/daywise/mark', {
+      student_id: faceResponse.data.student_id,
+      check_in_time: currentTime,
+      marked_by: markedBy,
+      method: 'face_recognition'
+    })
+
+    return {
+      ...attendanceResponse.data,
+      student_name: faceResponse.data.name,
+      student_id: faceResponse.data.student_id
+    }
   },
 
   // Bulk mark for entire division

@@ -1,4 +1,4 @@
-﻿"""
+"""
 Database models for Markbase application.
 All SQLAlchemy models are imported here for easy access.
 """
@@ -15,7 +15,8 @@ from .parent import Parent
 from .attendance import (
     DailyAttendance,
     GracePeriod,
-    LeaveRequest
+    LeaveRequest,
+    AttendanceSession
 )
 
 __all__ = [
@@ -32,4 +33,5 @@ __all__ = [
     "DailyAttendance",
     "GracePeriod",
     "LeaveRequest",
+    "AttendanceSession",
 ]

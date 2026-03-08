@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from datetime import date, datetime, time
 from app.core.database import get_db
-from app.models import DailyAttendance, Student, Division, GracePeriod
+from app.models import DailyAttendance, Student, Division, AttendanceSession
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/attendance/daywise", tags=["Day-wise Attendance"])
@@ -54,11 +54,15 @@ def mark_attendance(
         # Get grace period (default 9:15-9:30)
         grace_start = time(9, 15)
         grace_end = time(9, 30)
+        late_cutoff = time(9, 45)
         
+        if check_time < grace_start:
+            raise HTTPException(status_code=400, detail="Attendance window opens at 9:15 AM")
+            
         # Determine status
         if check_time <= grace_end:
             status = "present"
-        elif check_time <= time(9, 45):
+        elif check_time <= late_cutoff:
             status = "late"
         else:
             status = "absent"
@@ -67,6 +71,21 @@ def mark_attendance(
         student = db.query(Student).filter(Student.id == request.student_id).first()
         if not student:
             raise HTTPException(status_code=404, detail="Student not found")
+        
+        # Enforce that there is an active session for the division 
+        active_session = db.query(AttendanceSession).filter(
+            AttendanceSession.division_id == student.division_id,
+            AttendanceSession.date == today,
+            AttendanceSession.status == 'open'
+        ).first()
+
+        if not active_session:
+            # Maybe the staff closed it, or didn't open it.
+            if check_time > late_cutoff:
+                raise HTTPException(status_code=400, detail="Attendance window has closed for today")
+            else:
+                raise HTTPException(status_code=400, detail="Attendance is currently turned off for your class")
+
         
         # Check if already marked
         existing = db.query(DailyAttendance).filter(
@@ -173,6 +192,22 @@ def get_division_attendance(
     """Get attendance for entire division on a specific date."""
     students = db.query(Student).filter(Student.division_id == division_id).all()
     
+    # Check if session is closed or late cutoff passed
+    session = db.query(AttendanceSession).filter(
+        AttendanceSession.division_id == division_id,
+        AttendanceSession.date == date
+    ).first()
+    
+    # If the session is explicitly closed, OR it's past 9:45 today, unmarked = absent
+    late_cutoff_passed = False
+    if date == str(datetime.today().date()):
+        if datetime.now().time() > time(9, 45):
+            late_cutoff_passed = True
+    elif date < str(datetime.today().date()):
+        late_cutoff_passed = True # Past days are implicitly closed
+
+    is_closed = (session and session.status == 'closed') or late_cutoff_passed
+
     attendance_records = []
     for student in students:
         attendance = db.query(DailyAttendance).filter(
@@ -180,11 +215,18 @@ def get_division_attendance(
             DailyAttendance.date == date
         ).first()
         
+        # Auto-absent logic for viewing
+        final_status = "unmarked"
+        if attendance:
+            final_status = attendance.status
+        elif is_closed:
+            final_status = "absent"
+            
         attendance_records.append({
             "student_id": student.id,
             "student_name": f"{student.first_name} {student.last_name}",
             "roll_number": student.roll_number,
-            "status": attendance.status if attendance else "unmarked",
+            "status": final_status,
             "check_in_time": str(attendance.check_in_time) if attendance else None
         })
     

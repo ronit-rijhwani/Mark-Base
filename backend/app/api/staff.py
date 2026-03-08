@@ -1,340 +1,188 @@
-﻿"""
-Staff API endpoints for attendance management.
-Handles session opening, student marking, and session closing.
+"""
+Staff API endpoints for Day-wise attendance management.
+Handles session opening, viewing active sessions, and closing.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List, Optional
-from app.core.database import get_db
-from app.services.auth_service import AuthService
-from app.models import DailyAttendance
+from datetime import date, datetime
 
+from app.core.database import get_db
+from app.models import AttendanceSession, Division, Staff
 
 router = APIRouter(prefix="/api/staff", tags=["Staff"])
 
+class OpenSessionRequest(BaseModel):
+    division_id: int
 
-# Response Models
-class ActiveSessionResponse(BaseModel):
-    session_id: int
-    division_name: str
-    batch_name: Optional[str]
-    subject_name: str
-    session_type: str
-    start_time: str
-    end_time: str
-    room_number: Optional[str]
-
-
-class AttendanceSessionResponse(BaseModel):
+class SessionResponse(BaseModel):
     id: int
+    division_id: int
+    division_name: str
+    class_name: str
+    staff_id: int
+    staff_name: str
     date: str
     status: str
     opened_at: str
-    closed_at: Optional[str]
-    session_start_time: str
-    session_end_time: str
+    closed_at: Optional[str] = None
 
-
-class MarkAttendanceRequest(BaseModel):
-    student_id: int
-
-
-class MarkAttendanceResponse(BaseModel):
-    student_id: int
-    student_name: str
-    roll_number: str
-    status: str
-    marked_at: str
-
-
-@router.get("/active-sessions/{staff_id}", response_model=List[ActiveSessionResponse])
-def get_active_sessions(staff_id: int, db: Session = Depends(get_db)):
-    """
-    Get currently active timetable sessions for a staff member.
-    
-    Matches:
-    - Current day of week
-    - Current time (within session start/end)
-    - Staff ID
-    """
-    sessions = TimetableService.get_active_sessions_for_staff(db, staff_id)
-    
-    result = []
-    for session in sessions:
-        result.append({
-            "session_id": session.id,
-            "division_name": session.division.name,
-            "batch_name": session.batch.name if session.batch else None,
-            "subject_name": session.subject.name,
-            "session_type": session.session_type,
-            "start_time": str(session.start_time),
-            "end_time": str(session.end_time),
-            "room_number": session.room_number
-        })
-    
-    return result
-
-
-@router.post("/open-session/{timetable_session_id}")
+@router.post("/open-session", response_model=SessionResponse)
 def open_attendance_session(
-    timetable_session_id: int,
+    request: OpenSessionRequest,
     staff_id: int,
     db: Session = Depends(get_db)
 ):
     """
-    Open an attendance session for a timetable session.
-    
-    Students can start marking attendance after this is opened.
+    Open an attendance session for a division today.
+    Staff must open the session before students can mark attendance.
     """
-    attendance_session = AttendanceService.open_attendance_session(
-        db, timetable_session_id, staff_id
-    )
+    today = date.today()
     
-    if not attendance_session:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Session already opened or invalid timetable session"
-        )
+    # Check if a session already exists for this division today
+    existing_session = db.query(AttendanceSession).filter(
+        AttendanceSession.division_id == request.division_id,
+        AttendanceSession.date == today
+    ).first()
     
-    return {
-        "message": "Attendance session opened successfully",
-        "attendance_session_id": attendance_session.id,
-        "date": str(attendance_session.date),
-        "session_start_time": str(attendance_session.session_start_time),
-        "session_end_time": str(attendance_session.session_end_time)
-    }
-
-
-@router.post("/mark-attendance/{attendance_session_id}")
-async def mark_attendance_with_face(
-    attendance_session_id: int,
-    image: UploadFile = File(...),
-    staff_id: Optional[int] = None,
-    db: Session = Depends(get_db)
-):
-    """
-    Mark attendance for a student using face recognition (AI Feature).
-    
-    Process:
-    1. Student shows face to camera
-    2. System recognizes student (AI)
-    3. System verifies student belongs to this session
-    4. System calculates status (present/late) based on time
-    5. Attendance is marked
-    
-    Note: staff_id is optional - if not provided, uses session's staff_id
-    """
-    # Read image data
-    image_data = await image.read()
-    
-    # Authenticate student via face
-    student_auth = AuthService.authenticate_with_face(db, image_data)
-    
-    if not student_auth:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Face not recognized"
-        )
-    
-    student_id = student_auth["student_id"]
-    
-    # If staff_id not provided, get it from the attendance session
-    if staff_id is None:
-        session = db.query(AttendanceSession).filter(
-            AttendanceSession.id == attendance_session_id
-        ).first()
-        if not session:
+    if existing_session:
+        if existing_session.status == 'open':
+            # Just return the existing open session instead of throwing an error!
+            division = db.query(Division).filter(Division.id == request.division_id).first()
+            staff = db.query(Staff).filter(Staff.id == staff_id).first()
+            return {
+                "id": existing_session.id,
+                "division_id": division.id,
+                "division_name": division.name,
+                "class_name": division.class_.name,
+                "staff_id": staff.id,
+                "staff_name": f"{staff.first_name} {staff.last_name}",
+                "date": str(existing_session.date),
+                "status": existing_session.status,
+                "opened_at": str(existing_session.opened_at)
+            }
+        else:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Attendance session not found"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Attendance session for this division was already closed today."
             )
-        staff_id = session.staff_id
+            
+    # Check if staff already opened a session for another division today
+    staff_other_session = db.query(AttendanceSession).filter(
+        AttendanceSession.staff_id == staff_id,
+        AttendanceSession.date == today
+    ).first()
     
-    # Mark attendance
-    record = AttendanceService.mark_student_attendance(
-        db, attendance_session_id, student_id, staff_id
-    )
-    
-    if not record:
+    if staff_other_session:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Attendance already marked, session closed, or you don't belong to this class"
+            detail="You have already opened an attendance session for another division today."
         )
-    
-    return {
-        "message": "Attendance marked successfully",
-        "student_id": record.student_id,
-        "student_name": student_auth["name"],
-        "roll_number": student_auth["roll_number"],
-        "status": record.status.upper(),
-        "marked_at": str(record.marked_at)
-    }
 
+    # Get division and staff details
+    division = db.query(Division).filter(Division.id == request.division_id).first()
+    if not division:
+        raise HTTPException(status_code=404, detail="Division not found")
+        
+    staff = db.query(Staff).filter(Staff.id == staff_id).first()
+    if not staff:
+        raise HTTPException(status_code=404, detail="Staff not found")
 
-@router.post("/mark-attendance/{attendance_session_id}/manual")
-def mark_attendance_manual(
-    attendance_session_id: int,
-    staff_id: int,
-    request: MarkAttendanceRequest,
-    db: Session = Depends(get_db)
-):
-    """
-    Mark attendance manually (fallback without face scan).
-    For demo/testing purposes only.
-    """
-    record = AttendanceService.mark_student_attendance(
-        db, attendance_session_id, request.student_id, staff_id
+    # Create session
+    new_session = AttendanceSession(
+        division_id=request.division_id,
+        staff_id=staff_id,
+        date=today,
+        status='open'
     )
     
-    if not record:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Attendance already marked or session closed"
-        )
-    
-    # Get student info
-    from app.models import Student
-    student = db.query(Student).filter(Student.id == request.student_id).first()
+    db.add(new_session)
+    db.commit()
+    db.refresh(new_session)
     
     return {
-        "message": "Attendance marked successfully",
-        "student_id": record.student_id,
-        "student_name": f"{student.first_name} {student.last_name}",
-        "roll_number": student.roll_number,
-        "status": record.status.upper(),
-        "marked_at": str(record.marked_at)
+        "id": new_session.id,
+        "division_id": division.id,
+        "division_name": division.name,
+        "class_name": division.class_.name,
+        "staff_id": staff.id,
+        "staff_name": f"{staff.first_name} {staff.last_name}",
+        "date": str(new_session.date),
+        "status": new_session.status,
+        "opened_at": str(new_session.opened_at)
     }
 
-
-@router.post("/close-session/{attendance_session_id}")
+@router.post("/close-session/{session_id}")
 def close_attendance_session(
-    attendance_session_id: int,
+    session_id: int,
     staff_id: int,
     db: Session = Depends(get_db)
 ):
     """
-    Close attendance session.
-    
-    Automatically marks all unmarked students as ABSENT.
+    Close an active attendance session.
     """
-    success = AttendanceService.close_attendance_session(
-        db, attendance_session_id, staff_id
-    )
-    
-    if not success:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Session already closed or invalid"
-        )
-    
-    return {"message": "Attendance session closed successfully"}
-
-
-@router.get("/session-status/{attendance_session_id}")
-def get_session_status(attendance_session_id: int, db: Session = Depends(get_db)):
-    """Get current status of an attendance session."""
     session = db.query(AttendanceSession).filter(
-        AttendanceSession.id == attendance_session_id
+        AttendanceSession.id == session_id,
+        AttendanceSession.staff_id == staff_id
     ).first()
     
     if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Session not found"
-        )
+        raise HTTPException(status_code=404, detail="Session not found or not owned by you")
+        
+    if session.status == 'closed':
+        raise HTTPException(status_code=400, detail="Session is already closed")
+        
+    session.status = 'closed'
+    session.closed_at = datetime.utcnow()
     
-    # Get marked students count
-    marked_count = len(session.attendance_records)
+    db.commit()
     
-    # Get total students in the division (Theory only)
-    timetable_session = session.timetable_session
-    from app.models import Student
-    total_count = db.query(Student).filter(
-        Student.division_id == timetable_session.division_id
-    ).count()
+    return {"message": "Attendance session closed successfully"}
+
+@router.get("/active-session/{staff_id}", response_model=Optional[SessionResponse])
+def get_active_session(staff_id: int, db: Session = Depends(get_db)):
+    """
+    Get the currently active attendance session for the staff today.
+    """
+    today = date.today()
+    session = db.query(AttendanceSession).filter(
+        AttendanceSession.staff_id == staff_id,
+        AttendanceSession.date == today
+    ).first()
     
+    if not session:
+        return None
+        
     return {
-        "session_id": session.id,
-        "status": session.status,
+        "id": session.id,
+        "division_id": session.division.id,
+        "division_name": session.division.name,
+        "class_name": session.division.class_.name,
+        "staff_id": session.staff.id,
+        "staff_name": f"{session.staff.first_name} {session.staff.last_name}",
         "date": str(session.date),
-        "marked_count": marked_count,
-        "total_count": total_count,
-        "remaining": total_count - marked_count
+        "status": session.status,
+        "opened_at": str(session.opened_at),
+        "closed_at": str(session.closed_at) if session.closed_at else None
     }
 
-
-@router.get("/my-timetable/{staff_id}")
-def get_my_timetable(staff_id: int, db: Session = Depends(get_db)):
-    """Get weekly timetable for staff member."""
-    timetable = TimetableService.get_weekly_timetable_for_staff(db, staff_id)
-    
-    result = {}
-    day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-    
-    for day, sessions in timetable.items():
-        result[day_names[day]] = [
-            {
-                "session_id": s.id,
-                "subject": s.subject.name,
-                "division": s.division.name,
-                "batch": s.batch.name if s.batch else None,
-                "type": s.session_type,
-                "start_time": str(s.start_time),
-                "end_time": str(s.end_time),
-                "room": s.room_number
-            }
-            for s in sessions
-        ]
-    
-    return result
-
-
-@router.get("/open-sessions")
-def get_open_attendance_sessions(division_id: Optional[int] = None, db: Session = Depends(get_db)):
+@router.get("/division/{division_id}/students")
+def get_division_students(division_id: int, db: Session = Depends(get_db)):
     """
-    Get currently open attendance sessions (public endpoint).
-    
-    This allows students to see which sessions are accepting attendance.
-    If division_id is provided, filters to only that division's sessions.
-    
-    Returns sessions that are:
-    - Status = 'open'
-    - Not yet closed
-    - Theory sessions only (no lab/batch sessions)
+    Get all students in a division. Fast API for staff.
     """
-    from datetime import date
-    
-    query = db.query(AttendanceSession).join(
-        TimetableSession
-    ).filter(
-        AttendanceSession.status == "open",
-        AttendanceSession.date == date.today()
-    )
-    
-    # Filter by division if provided
-    if division_id:
-        query = query.filter(TimetableSession.division_id == division_id)
-    
-    open_sessions = query.all()
+    from app.models import Student
+    students = db.query(Student).filter(Student.division_id == division_id).all()
     
     result = []
-    for session in open_sessions:
-        timetable = session.timetable_session
+    for s in students:
         result.append({
-            "attendance_session_id": session.id,
-            "subject": timetable.subject.name,
-            "division": timetable.division.name,
-            "division_id": timetable.division_id,
-            "session_type": timetable.session_type,
-            "start_time": str(session.session_start_time),
-            "end_time": str(session.session_end_time),
-            "date": str(session.date),
-            "staff_name": f"{session.staff.first_name} {session.staff.last_name}"
+            "id": s.id,
+            "roll_number": s.roll_number,
+            "first_name": s.first_name,
+            "last_name": s.last_name,
+            "name": f"{s.first_name} {s.last_name}"
         })
-    
     return result
-
-
-
