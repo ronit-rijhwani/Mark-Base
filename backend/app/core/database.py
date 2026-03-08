@@ -56,4 +56,4 @@ def init_db():
     Should be called on application startup.
     """
     Base.metadata.create_all(bind=engine)
-    print("✓ Database initialized successfully")
+    print("[OK] Database initialized successfully")

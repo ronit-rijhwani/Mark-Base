@@ -10,7 +10,7 @@ try:
     FACE_RECOGNITION_AVAILABLE = True
 except ImportError:
     FACE_RECOGNITION_AVAILABLE = False
-    print("⚠️ Warning: face_recognition library not available. Face recognition features disabled.")
+    print("[WARN] face_recognition library not available. Face recognition features disabled.")
 
 import numpy as np
 import cv2
@@ -57,7 +57,7 @@ class FaceRecognitionService:
             List[float]: 128-dimensional face encoding vector or None if no face detected
         """
         if not FACE_RECOGNITION_AVAILABLE:
-            print("⚠️ Face recognition not available - feature disabled")
+            print("[WARN] Face recognition not available - feature disabled")
             return None
         
         try:
@@ -75,11 +75,11 @@ class FaceRecognitionService:
             face_locations = face_recognition.face_locations(image_np)
             
             if len(face_locations) == 0:
-                print("❌ No face detected in image")
+                print("[ERROR] No face detected in image")
                 return None
             
             if len(face_locations) > 1:
-                print("⚠️ Multiple faces detected, using first face")
+                print("[WARN] Multiple faces detected, using first face")
             
             # Generate face encoding (AI - Face Encoding)
             face_encodings = face_recognition.face_encodings(image_np, face_locations)
@@ -87,13 +87,13 @@ class FaceRecognitionService:
             if len(face_encodings) > 0:
                 # Convert numpy array to list for JSON serialization
                 encoding = face_encodings[0].tolist()
-                print(f"✓ Face encoding generated successfully (128-d vector)")
+                print(f"[OK] Face encoding generated successfully (128-d vector)")
                 return encoding
             
             return None
         
         except Exception as e:
-            print(f"❌ Error encoding face: {str(e)}")
+            print(f"[ERROR] Error encoding face: {str(e)}")
             return None
     
     def verify_face(self, face_encoding_json: str, image_data: bytes) -> Tuple[bool, float]:
@@ -133,7 +133,7 @@ class FaceRecognitionService:
             return is_match, float(face_distance)
         
         except Exception as e:
-            print(f"❌ Error verifying face: {str(e)}")
+            print(f"[ERROR] Error verifying face: {str(e)}")
             return False, 1.0
     
     def detect_faces_in_image(self, image_data: bytes) -> int:
@@ -165,7 +165,7 @@ class FaceRecognitionService:
             return len(face_locations)
         
         except Exception as e:
-            print(f"❌ Error detecting faces: {str(e)}")
+            print(f"[ERROR] Error detecting faces: {str(e)}")
             return 0
     
     def save_face_encoding(self, user_id: int, encoding: List[float]) -> bool:
@@ -185,11 +185,11 @@ class FaceRecognitionService:
             with open(file_path, 'w') as f:
                 json.dump({"user_id": user_id, "encoding": encoding}, f)
             
-            print(f"✓ Face encoding saved for user {user_id}")
+            print(f"[OK] Face encoding saved for user {user_id}")
             return True
         
         except Exception as e:
-            print(f"❌ Error saving face encoding: {str(e)}")
+            print(f"[ERROR] Error saving face encoding: {str(e)}")
             return False
     
     def load_face_encoding(self, user_id: int) -> Optional[List[float]]:
@@ -214,7 +214,7 @@ class FaceRecognitionService:
             return data.get("encoding")
         
         except Exception as e:
-            print(f"❌ Error loading face encoding: {str(e)}")
+            print(f"[ERROR] Error loading face encoding: {str(e)}")
             return None
 
 

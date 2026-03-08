@@ -1,4 +1,4 @@
-﻿"""
+"""
 Admin API endpoints for system management.
 Handles creation of departments, classes, divisions, users, etc.
 """
@@ -843,6 +843,8 @@ def delete_division(division_id: int, db: Session = Depends(get_db)):
 @router.delete("/students/{student_id}")
 def delete_student(student_id: int, db: Session = Depends(get_db)):
     """Delete a student and all related data."""
+    from app.models import DailyAttendance
+    
     student = db.query(Student).filter(Student.id == student_id).first()
     if not student:
         raise HTTPException(
@@ -851,13 +853,35 @@ def delete_student(student_id: int, db: Session = Depends(get_db)):
         )
     
     try:
-        # Delete associated user account
-        if student.user_id:
-            user = db.query(User).filter(User.id == student.user_id).first()
+        # 1. Delete parent accounts and their user records first
+        parents = db.query(Parent).filter(Parent.student_id == student_id).all()
+        for parent in parents:
+            if parent.user_id:
+                parent_user = db.query(User).filter(User.id == parent.user_id).first()
+                if parent_user:
+                    db.delete(parent_user)
+            db.delete(parent)
+        
+        # 2. Delete attendance records
+        db.query(DailyAttendance).filter(DailyAttendance.student_id == student_id).delete()
+        
+        # 3. Delete leave requests
+        from app.models import LeaveRequest
+        db.query(LeaveRequest).filter(LeaveRequest.student_id == student_id).delete()
+        
+        # 4. Save user_id before deleting student
+        user_id = student.user_id
+        
+        # 5. Delete student
+        db.delete(student)
+        db.flush()
+        
+        # 6. Delete associated user account
+        if user_id:
+            user = db.query(User).filter(User.id == user_id).first()
             if user:
                 db.delete(user)
         
-        db.delete(student)
         db.commit()
         return {"message": "Student deleted successfully"}
     except Exception as e:
@@ -879,13 +903,19 @@ def delete_staff(staff_id: int, db: Session = Depends(get_db)):
         )
     
     try:
-        # Delete associated user account
-        if staff.user_id:
-            user = db.query(User).filter(User.id == staff.user_id).first()
+        # Save user_id before deleting staff
+        user_id = staff.user_id
+        
+        # Delete staff first
+        db.delete(staff)
+        db.flush()
+        
+        # Then delete associated user account
+        if user_id:
+            user = db.query(User).filter(User.id == user_id).first()
             if user:
                 db.delete(user)
         
-        db.delete(staff)
         db.commit()
         return {"message": "Staff deleted successfully"}
     except HTTPException:
@@ -910,13 +940,19 @@ def delete_parent(parent_id: int, db: Session = Depends(get_db)):
         )
     
     try:
-        # Delete associated user account
-        if parent.user_id:
-            user = db.query(User).filter(User.id == parent.user_id).first()
+        # Save user_id before deleting parent
+        user_id = parent.user_id
+        
+        # Delete parent first
+        db.delete(parent)
+        db.flush()
+        
+        # Then delete associated user account
+        if user_id:
+            user = db.query(User).filter(User.id == user_id).first()
             if user:
                 db.delete(user)
         
-        db.delete(parent)
         db.commit()
         return {"message": "Parent deleted successfully"}
     except Exception as e:

@@ -1,4 +1,4 @@
-﻿from fastapi import FastAPI
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import init_db
@@ -36,13 +36,13 @@ async def startup_event():
     print("=" * 60)
     print("  MARKBASE - DAY-WISE ATTENDANCE SYSTEM")
     print("=" * 60)
-    print("✓ Day-wise Attendance: ACTIVE")
-    print("✓ Grace Period: 9:15-9:30 AM")
-    print("✓ Auto Status: Present/Late/Absent")
-    print("✓ Leave Management: ENABLED")
+    print("[OK] Day-wise Attendance: ACTIVE")
+    print("[OK] Grace Period: 9:15-9:30 AM")
+    print("[OK] Auto Status: Present/Late/Absent")
+    print("[OK] Leave Management: ENABLED")
     print("=" * 60)
-    print("📡 API Endpoints: /api/attendance/daywise/*")
-    print("📖 Documentation: /docs")
+    print("  API Endpoints: /api/attendance/daywise/*")
+    print("  Documentation: /docs")
     print("=" * 60)
 
 @app.get("/")

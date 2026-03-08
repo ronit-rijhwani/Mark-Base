@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Complete Admin Dashboard with all management features
  */
 import React, { useState, useEffect, useRef } from "react";
@@ -467,19 +467,20 @@ function AdminDashboard({ user, onLogout }) {
             className={`tab ${activeTab === "overview" ? "active" : ""}`}
             onClick={() => setActiveTab("overview")}
           >
-            ðŸ“Š Overview
+            Overview
           </button>
           <button
             className={`tab ${activeTab === "structure" ? "active" : ""}`}
             onClick={() => setActiveTab("structure")}
           >
-            ðŸ›ï¸ Academic Structure
+            Academic Structure
+
           </button>
           <button
             className={`tab ${activeTab === "users" ? "active" : ""}`}
             onClick={() => setActiveTab("users")}
           >
-            ðŸ‘¥ Users
+            Users
           </button>
           <button
             className={`tab ${activeTab === "attendance" ? "active" : ""}`}
@@ -620,7 +621,7 @@ function AdminDashboard({ user, onLogout }) {
                               }
                             }}
                           >
-                            ðŸ—‘ï¸ Delete
+                            Delete
                           </button>
                         </td>
                       </tr>
@@ -660,19 +661,6 @@ function AdminDashboard({ user, onLogout }) {
                           placeholder="1K"
                         />
                       </div>
-                      <div className="form-group">
-                        <label>Phone</label>
-                        <input
-                          type="tel"
-                          value={staffForm.phone}
-                          onChange={(e) =>
-                            setStaffForm({
-                              ...staffForm,
-                              phone: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
                     </div>
                     <div className="form-row">
                       <div className="form-group">
@@ -698,7 +686,7 @@ function AdminDashboard({ user, onLogout }) {
                     </div>
                     <div className="form-actions">
                       <button type="submit" className="btn btn-success">
-                        âœ… Create Class
+                        Create Class
                       </button>
                       <button
                         type="button"
@@ -765,7 +753,7 @@ function AdminDashboard({ user, onLogout }) {
                                   }
                                 }}
                               >
-                                ðŸ—‘ï¸ Delete
+                                Delete
                               </button>
                             </td>
                           </tr>
@@ -857,7 +845,7 @@ function AdminDashboard({ user, onLogout }) {
                     </div>
                     <div className="form-actions">
                       <button type="submit" className="btn btn-success">
-                        âœ… Create Division
+                        Create Division
                       </button>
                       <button
                         type="button"
@@ -900,7 +888,7 @@ function AdminDashboard({ user, onLogout }) {
                           ? `${dept.name} (${dept.code})`
                           : cls
                             ? `Department ${cls.department_id}`
-                            : "â€”";
+                            : "—";
                         return (
                           <tr key={division.id}>
                             <td>{division.id}</td>
@@ -936,7 +924,7 @@ function AdminDashboard({ user, onLogout }) {
                                   }
                                 }}
                               >
-                                ðŸ—‘ï¸ Delete
+                                Delete
                               </button>
                             </td>
                           </tr>
@@ -985,7 +973,7 @@ function AdminDashboard({ user, onLogout }) {
                   </button>
                 </div>
                 {showStudentForm && (
-                  <form onSubmit={handleCreateStudent} className="form-box">
+                  <form onSubmit={editingStudent ? handleUpdateStudent : handleCreateStudent} className="form-box">
                     <div className="form-row">
                       <div className="form-group">
                         <label>Roll Number *</label>
@@ -1143,9 +1131,7 @@ function AdminDashboard({ user, onLogout }) {
                               </option>
                             ))}
                         </select>
-                        <small className="text-muted">
-                          Options: 1K, 2K, 3K, 4K, 5K, 6K
-                        </small>
+
                       </div>
                       <div className="form-group">
                         <label>Division *</label>
@@ -1172,7 +1158,7 @@ function AdminDashboard({ user, onLogout }) {
                               </option>
                             ))}
                         </select>
-                        <small className="text-muted">Options: A, B</small>
+
                       </div>
                     </div>
                     <div className="form-row">
@@ -1193,14 +1179,14 @@ function AdminDashboard({ user, onLogout }) {
                       </div>
                     </div>
                     <div className="form-group">
-                      <label>ðŸ“¸ Face Photo (for AI Recognition)</label>
+                      <label>Face Photo (for AI Recognition)</label>
                       {!showCamera && !capturedImage && (
                         <button
                           type="button"
                           className="btn btn-primary"
                           onClick={() => setShowCamera(true)}
                         >
-                          ðŸ“· Open Camera to Capture Face
+                          Open Camera to Capture Face
                         </button>
                       )}
                       {showCamera && (
@@ -1222,7 +1208,7 @@ function AdminDashboard({ user, onLogout }) {
                               className="btn btn-success"
                               onClick={handleCaptureFace}
                             >
-                              âœ“ Capture Face
+                              Capture Face
                             </button>
                             <button
                               type="button"
@@ -1247,10 +1233,10 @@ function AdminDashboard({ user, onLogout }) {
                               className="btn btn-warning"
                               onClick={handleRetakeFace}
                             >
-                              ðŸ”„ Retake Photo
+                              Retake Photo
                             </button>
                             <span className="text-success">
-                              âœ“ Face captured successfully
+                              Face captured successfully
                             </span>
                           </div>
                         </div>
@@ -1262,12 +1248,29 @@ function AdminDashboard({ user, onLogout }) {
                     </div>
                     <div className="form-actions">
                       <button type="submit" className="btn btn-success">
-                        âœ… Create Student
+                        {editingStudent ? "Update Student" : "Create Student"}
                       </button>
                       <button
                         type="button"
                         className="btn btn-secondary"
-                        onClick={() => setShowStudentForm(false)}
+                        onClick={() => {
+                          setShowStudentForm(false);
+                          setEditingStudent(null);
+                          setStudentForm({
+                            username: "",
+                            roll_number: "",
+                            enrollment_number: "",
+                            first_name: "",
+                            last_name: "",
+                            email: "",
+                            phone: "",
+                            department_id: "",
+                            class_id: "",
+                            division_id: "",
+                            date_of_birth: "",
+                            enrollment_year: new Date().getFullYear(),
+                          });
+                        }}
                       >
                         Cancel
                       </button>
@@ -1452,19 +1455,6 @@ function AdminDashboard({ user, onLogout }) {
                           }
                         />
                       </div>
-                      <div className="form-group">
-                        <label>Phone</label>
-                        <input
-                          type="tel"
-                          value={staffForm.phone}
-                          onChange={(e) =>
-                            setStaffForm({
-                              ...staffForm,
-                              phone: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
                     </div>
                     <div className="form-row">
                       <div className="form-group">
@@ -1627,7 +1617,7 @@ function AdminDashboard({ user, onLogout }) {
                 </div>
                 {showParentForm && (
                   <form
-                    onSubmit={async (e) => {
+                    onSubmit={editingParent ? handleUpdateParent : async (e) => {
                       e.preventDefault();
                       try {
                         await adminAPI.createParent(parentForm);
@@ -1655,7 +1645,7 @@ function AdminDashboard({ user, onLogout }) {
                     className="form-box"
                   >
                     <div className="alert alert-info">
-                      â„¹ï¸ Parent accounts are linked to a specific student.
+                      Parent accounts are linked to a specific student.
                       Parents can view their child's attendance.
                     </div>
                     <div className="form-row">
@@ -1793,12 +1783,25 @@ function AdminDashboard({ user, onLogout }) {
                     </div>
                     <div className="form-actions">
                       <button type="submit" className="btn btn-success">
-                        âœ… Create Parent Account
+                        {editingParent ? "Update Parent" : "Create Parent Account"}
                       </button>
                       <button
                         type="button"
                         className="btn btn-secondary"
-                        onClick={() => setShowParentForm(false)}
+                        onClick={() => {
+                          setShowParentForm(false);
+                          setEditingParent(null);
+                          setParentForm({
+                            student_id: "",
+                            first_name: "",
+                            last_name: "",
+                            email: "",
+                            phone: "",
+                            relation: "father",
+                            username: "",
+                            password: "",
+                          });
+                        }}
                       >
                         Cancel
                       </button>

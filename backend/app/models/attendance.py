@@ -1,4 +1,4 @@
-﻿"""
+"""
 Attendance Models - Day-wise attendance tracking.
 Implements 9:15-9:30 grace period logic.
 """
@@ -29,7 +29,7 @@ class DailyAttendance(Base):
     __table_args__ = (
         UniqueConstraint('student_id', 'date', name='uq_student_date'),
         CheckConstraint("status IN ('present', 'late', 'absent')"),
-        CheckConstraint("marked_method IN ('face_recognition', 'manual', 'system')"),
+        CheckConstraint("marked_method IN ('face_recognition', 'manual', 'system', 'admin_manual')"),
     )
     
     student = relationship("Student", back_populates="daily_attendance")
