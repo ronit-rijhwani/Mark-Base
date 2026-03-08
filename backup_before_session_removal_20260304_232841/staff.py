@@ -1,4 +1,4 @@
-﻿"""
+"""
 Staff Model - Represents teaching staff/faculty.
 Linked to User table for authentication.
 """
@@ -11,7 +11,7 @@ from app.core.database import Base
 
 class Staff(Base):
     """
-    Staff model for faculty members who mark attendance.
+    Staff model for faculty members who conduct lectures and mark attendance.
     Each staff has username + password authentication.
     Staff can be assigned as class teachers for specific class and division.
     """
@@ -34,8 +34,13 @@ class Staff(Base):
     department = relationship("Department", back_populates="staff")
     class_ = relationship("Class", foreign_keys=[class_id])
     division = relationship("Division", foreign_keys=[division_id])
+    timetable_sessions = relationship("TimetableSession", back_populates="staff")
     
-    # Day-wise attendance - Staff who mark/edit attendance and approve leaves
+    # Legacy lecture-based attendance
+    attendance_sessions = relationship("AttendanceSession", back_populates="staff")
+    
+    # NEW: Day-wise attendance - Staff who mark/edit attendance and approve leaves
+    # Note: Using string references to avoid circular imports
     marked_attendance = relationship("DailyAttendance", foreign_keys="DailyAttendance.marked_by")
     edited_attendance = relationship("DailyAttendance", foreign_keys="DailyAttendance.edited_by")
     approved_leaves = relationship("LeaveRequest", back_populates="approver")

@@ -1,4 +1,4 @@
-"""
+﻿"""
 Batch Model - Represents lab batches within divisions.
 Example: Batch 1, 2, 3 for practical/lab sessions
 """
@@ -24,7 +24,6 @@ class Batch(Base):
     # Relationships
     division = relationship("Division", back_populates="batches")
     students = relationship("Student", back_populates="batch")
-    timetable_sessions = relationship("TimetableSession", back_populates="batch")
     
     # Unique constraint: One batch name per division
     __table_args__ = (
@@ -33,3 +32,4 @@ class Batch(Base):
     
     def __repr__(self):
         return f"<Batch(id={self.id}, name='{self.name}', division_id={self.division_id})>"
+

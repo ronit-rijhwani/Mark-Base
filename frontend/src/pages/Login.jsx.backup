@@ -28,7 +28,6 @@ function Login({ onLogin }) {
       const userData = await authAPI.login(username, password)
       onLogin(userData)
     } catch (err) {
-    console.error("Login error:", err)
       setError(err.response?.data?.detail || 'Login failed. Please check your credentials.')
     } finally {
       setLoading(false)
@@ -57,7 +56,6 @@ function Login({ onLogin }) {
       const userData = await authAPI.loginWithFace(file)
       onLogin(userData)
     } catch (err) {
-    console.error("Login error:", err)
       setError(err.response?.data?.detail || 'Face not recognized. Please try again.')
     } finally {
       setLoading(false)

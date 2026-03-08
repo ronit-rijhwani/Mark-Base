@@ -1,4 +1,4 @@
-﻿"""
+"""
 Student API endpoints for viewing attendance records.
 Students can only view their own attendance data (no marking capability).
 """
@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List, Dict, Optional
 from app.core.database import get_db
+from app.services.attendance_service import AttendanceService
 from app.models import Student, Subject
 
 
@@ -132,7 +133,7 @@ def get_student_dashboard(student_id: int, db: Session = Depends(get_db)):
     overall_stats = AttendanceService.get_student_attendance_percentage(db, student_id)
     
     # Recent attendance (last 10 records)
-    from app.models import DailyAttendance
+    from app.models import AttendanceRecord, AttendanceSession
     recent_records = db.query(AttendanceRecord).join(
         AttendanceSession
     ).filter(
@@ -182,5 +183,3 @@ def get_student_dashboard(student_id: int, db: Session = Depends(get_db)):
         "late_entries_count": late_count,
         "low_attendance_alerts": low_attendance_subjects
     }
-
-

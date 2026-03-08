@@ -1,4 +1,4 @@
-﻿"""
+"""
 Database models for Markbase application.
 All SQLAlchemy models are imported here for easy access.
 """
@@ -12,7 +12,10 @@ from .subject import Subject
 from .staff import Staff
 from .student import Student
 from .parent import Parent
+from .timetable import TimetableSession
 from .attendance import (
+    AttendanceSession, 
+    AttendanceRecord,
     DailyAttendance,
     GracePeriod,
     LeaveRequest
@@ -28,7 +31,11 @@ __all__ = [
     "Staff",
     "Student",
     "Parent",
-    # Day-wise attendance only
+    "TimetableSession",
+    # Legacy lecture-based
+    "AttendanceSession",
+    "AttendanceRecord",
+    # NEW: Day-wise attendance
     "DailyAttendance",
     "GracePeriod",
     "LeaveRequest",

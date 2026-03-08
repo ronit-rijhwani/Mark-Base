@@ -1,4 +1,4 @@
-"""
+﻿"""
 Admin API endpoints for system management.
 Handles creation of departments, classes, divisions, users, etc.
 """
@@ -11,7 +11,7 @@ from datetime import date
 from app.core.database import get_db
 from app.models import (
     User, Department, Class, Division, Batch, Subject,
-    Staff, Student, Parent, TimetableSession
+    Staff, Student, Parent
 )
 from app.utils.security import get_password_hash
 
@@ -55,8 +55,15 @@ class CreateStaffRequest(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     department_id: int
-    class_id: Optional[int] = None
-    division_id: Optional[int] = None
+
+
+class UpdateStaffRequest(BaseModel):
+    staff_id: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    department_id: Optional[int] = None
 
 
 class CreateStudentRequest(BaseModel):
@@ -75,6 +82,20 @@ class CreateStudentRequest(BaseModel):
     enrollment_year: Optional[int] = None
 
 
+class UpdateStudentRequest(BaseModel):
+    roll_number: Optional[str] = None
+    enrollment_number: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    department_id: Optional[int] = None
+    class_id: Optional[int] = None
+    division_id: Optional[int] = None
+    date_of_birth: Optional[date] = None
+    enrollment_year: Optional[int] = None
+
+
 class CreateParentRequest(BaseModel):
     username: str
     password: str
@@ -84,6 +105,21 @@ class CreateParentRequest(BaseModel):
     email: Optional[str] = None
     phone: str
     relation: str
+
+
+class UpdateParentRequest(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    relation: Optional[str] = None
+
+
+class UpdateAttendanceRequest(BaseModel):
+    student_id: int
+    date: str  # Format: "YYYY-MM-DD"
+    status: str  # "present", "absent", "late"
+    reason: Optional[str] = None
 
 
 # ==================== DEPARTMENT ENDPOINTS ====================
@@ -308,14 +344,42 @@ def create_staff(request: CreateStaffRequest, db: Session = Depends(get_db)):
         last_name=request.last_name,
         email=request.email,
         phone=request.phone,
-        department_id=request.department_id,
-        class_id=request.class_id,
-        division_id=request.division_id
+        department_id=request.department_id
     )
     db.add(staff)
     db.commit()
     db.refresh(staff)
 
+    return staff
+
+
+@router.put("/staff/{staff_id}")
+def update_staff(staff_id: int, request: UpdateStaffRequest, db: Session = Depends(get_db)):
+    """Update a staff member's details."""
+    staff = db.query(Staff).filter(Staff.id == staff_id).first()
+    if not staff:
+        raise HTTPException(status_code=404, detail="Staff not found")
+    
+    # Update only provided fields
+    if request.staff_id is not None:
+        staff.staff_id = request.staff_id
+    if request.first_name is not None:
+        staff.first_name = request.first_name
+    if request.last_name is not None:
+        staff.last_name = request.last_name
+    if request.email is not None:
+        staff.email = request.email
+    if request.phone is not None:
+        staff.phone = request.phone
+    if request.department_id is not None:
+        # Validate department exists
+        department = db.query(Department).filter(Department.id == request.department_id).first()
+        if not department:
+            raise HTTPException(status_code=404, detail="Department not found")
+        staff.department_id = request.department_id
+    
+    db.commit()
+    db.refresh(staff)
     return staff
 
 
@@ -348,7 +412,7 @@ def get_staff_by_id(staff_id: int, db: Session = Depends(get_db)):
         "division_id": staff.division_id,
         "division_name": division_name,
         "class_name": class_name,
-        "username": staff.username
+        "username": staff.user.username if staff.user else None
     }
 
 
@@ -443,7 +507,41 @@ def create_student(request: CreateStudentRequest, db: Session = Depends(get_db))
     return student
 
 
-# ==================== PARENT ENDPOINTS ====================
+@router.put("/students/{student_id}")
+def update_student(student_id: int, request: UpdateStudentRequest, db: Session = Depends(get_db)):
+    """Update a student's details."""
+    student = db.query(Student).filter(Student.id == student_id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    
+    # Validate new division/class/department if provided
+    if request.division_id is not None:
+        division = db.query(Division).filter(Division.id == request.division_id).first()
+        if not division:
+            raise HTTPException(status_code=404, detail="Division not found")
+        student.division_id = request.division_id
+    
+    # Update only provided fields
+    if request.roll_number is not None:
+        student.roll_number = request.roll_number
+    if request.enrollment_number is not None:
+        student.enrollment_number = request.enrollment_number
+    if request.first_name is not None:
+        student.first_name = request.first_name
+    if request.last_name is not None:
+        student.last_name = request.last_name
+    if request.email is not None:
+        student.email = request.email
+    if request.phone is not None:
+        student.phone = request.phone
+    if request.date_of_birth is not None:
+        student.date_of_birth = request.date_of_birth
+    if request.enrollment_year is not None:
+        student.enrollment_year = request.enrollment_year
+    
+    db.commit()
+    db.refresh(student)
+    return student
 @router.get("/parents")
 def get_parents(student_id: Optional[int] = None, db: Session = Depends(get_db)):
     """Get all parents, optionally filtered by student."""
@@ -497,6 +595,151 @@ def create_parent(request: CreateParentRequest, db: Session = Depends(get_db)):
     db.refresh(parent)
     
     return parent
+
+
+@router.put("/parents/{parent_id}")
+def update_parent(parent_id: int, request: UpdateParentRequest, db: Session = Depends(get_db)):
+    """Update a parent's details."""
+    parent = db.query(Parent).filter(Parent.id == parent_id).first()
+    if not parent:
+        raise HTTPException(status_code=404, detail="Parent not found")
+    
+    # Update only provided fields
+    if request.first_name is not None:
+        parent.first_name = request.first_name
+    if request.last_name is not None:
+        parent.last_name = request.last_name
+    if request.email is not None:
+        parent.email = request.email
+    if request.phone is not None:
+        parent.phone = request.phone
+    if request.relation is not None:
+        parent.relation = request.relation
+    
+    db.commit()
+    db.refresh(parent)
+    return parent
+
+
+# ==================== ATTENDANCE MANAGEMENT ENDPOINTS ====================
+
+@router.put("/attendance")
+def update_attendance(request: UpdateAttendanceRequest, db: Session = Depends(get_db)):
+    """
+    Admin can update attendance for a student on a specific date.
+    Can mark students as present even if they didn't mark their attendance.
+    """
+    from datetime import datetime
+    from app.models import DailyAttendance
+    from sqlalchemy import time as sql_time
+    
+    try:
+        attendance_date = datetime.strptime(request.date, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+    
+    # Validate student exists
+    student = db.query(Student).filter(Student.id == request.student_id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    
+    # Validate status
+    if request.status not in ["present", "absent", "late"]:
+        raise HTTPException(status_code=400, detail="Status must be 'present', 'absent', or 'late'")
+    
+    # Check if attendance record exists for this date
+    existing = db.query(DailyAttendance).filter(
+        DailyAttendance.student_id == request.student_id,
+        DailyAttendance.date == attendance_date
+    ).first()
+    
+    # Determine check-in time based on status
+    from datetime import time as dt_time
+    if request.status == "present":
+        check_time = dt_time(9, 15)  # On-time
+    elif request.status == "late":
+        check_time = dt_time(9, 45)  # Late
+    else:
+        check_time = dt_time(23, 59)  # Absent - end of day
+    
+    if existing:
+        # Update existing record
+        existing.status = request.status
+        existing.check_in_time = check_time
+        existing.marked_method = "admin_manual"
+    else:
+        # Create new attendance record
+        attendance = DailyAttendance(
+            student_id=request.student_id,
+            division_id=student.division_id,
+            date=attendance_date,
+            check_in_time=check_time,
+            status=request.status,
+            marked_by=None,  # Admin override
+            marked_method="admin_manual"
+        )
+        db.add(attendance)
+    
+    db.commit()
+    
+    return {
+        "message": f"Attendance updated to '{request.status}'",
+        "student_id": request.student_id,
+        "date": request.date,
+        "status": request.status
+    }
+
+
+@router.get("/attendance/division/{division_id}/{date}")
+def get_division_attendance_for_admin(
+    division_id: int,
+    date: str,
+    db: Session = Depends(get_db)
+):
+    """Get all attendance records for a division on a specific date (admin view)."""
+    from datetime import datetime
+    from app.models import DailyAttendance
+    
+    try:
+        attendance_date = datetime.strptime(date, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+    
+    # Validate division exists
+    division = db.query(Division).filter(Division.id == division_id).first()
+    if not division:
+        raise HTTPException(status_code=404, detail="Division not found")
+    
+    # Get all students in division
+    students = db.query(Student).filter(Student.division_id == division_id).all()
+    
+    attendance_records = []
+    for student in students:
+        attendance = db.query(DailyAttendance).filter(
+            DailyAttendance.student_id == student.id,
+            DailyAttendance.date == attendance_date
+        ).first()
+        
+        attendance_records.append({
+            "student_id": student.id,
+            "student_name": f"{student.first_name} {student.last_name}",
+            "roll_number": student.roll_number,
+            "status": attendance.status if attendance else "unmarked",
+            "check_in_time": str(attendance.check_in_time) if attendance else None,
+            "marked_method": attendance.marked_method if attendance else None
+        })
+    
+    return {
+        "division_id": division_id,
+        "division_name": division.name,
+        "date": date,
+        "total_students": len(students),
+        "present_count": len([r for r in attendance_records if r["status"] == "present"]),
+        "absent_count": len([r for r in attendance_records if r["status"] == "absent"]),
+        "late_count": len([r for r in attendance_records if r["status"] == "late"]),
+        "unmarked_count": len([r for r in attendance_records if r["status"] == "unmarked"]),
+        "records": attendance_records
+    }
 
 
 # ==================== DELETE ENDPOINTS ====================
@@ -636,15 +879,6 @@ def delete_staff(staff_id: int, db: Session = Depends(get_db)):
         )
     
     try:
-        # Check if staff has timetable sessions assigned
-        session_count = db.query(TimetableSession).filter(TimetableSession.staff_id == staff_id).count()
-        
-        if session_count > 0:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Cannot delete staff: {session_count} timetable session(s) are assigned to this staff member. Please reassign or delete the sessions first."
-            )
-        
         # Delete associated user account
         if staff.user_id:
             user = db.query(User).filter(User.id == staff.user_id).first()
@@ -691,3 +925,6 @@ def delete_parent(parent_id: int, db: Session = Depends(get_db)):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Cannot delete parent: {str(e)}"
         )
+
+
+

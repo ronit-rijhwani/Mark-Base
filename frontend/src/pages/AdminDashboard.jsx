@@ -1,9 +1,9 @@
-/**
+﻿/**
  * Complete Admin Dashboard with all management features
  */
 import React, { useState, useEffect, useRef } from "react";
 import Webcam from "react-webcam";
-import { adminAPI, timetableAPI } from "../services/api";
+import { adminAPI } from "../services/api";
 import "../styles/dashboard.css";
 function AdminDashboard({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState("overview");
@@ -20,8 +20,9 @@ function AdminDashboard({ user, onLogout }) {
   const [staff, setStaff] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [parents, setParents] = useState([]);
-  const [timetableSessions, setTimetableSessions] = useState([]);
+
   const hasParentUsername = parents.some((parent) => parent.username);
+
   // Form states
   const [showDeptForm, setShowDeptForm] = useState(false);
   const [showClassForm, setShowClassForm] = useState(false);
@@ -60,17 +61,18 @@ function AdminDashboard({ user, onLogout }) {
     password: "",
   });
   const [showParentForm, setShowParentForm] = useState(false);
-  const [timetableForm, setTimetableForm] = useState({
-    division_id: "",
-    batch_id: "",
-    subject_id: "",
-    staff_id: "",
-    day_of_week: "",
-    start_time: "",
-    end_time: "",
-    session_type: "theory",
-    room_number: ""
-  });
+
+  // Edit states
+  const [editingStaff, setEditingStaff] = useState(null);
+  const [editingStudent, setEditingStudent] = useState(null);
+  const [editingParent, setEditingParent] = useState(null);
+
+  // Attendance management states
+  const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [attendanceDivision, setAttendanceDivision] = useState("");
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
+  const [showAttendanceManager, setShowAttendanceManager] = useState(false);
+
   const [parentForm, setParentForm] = useState({
     student_id: "",
     first_name: "",
@@ -87,7 +89,7 @@ function AdminDashboard({ user, onLogout }) {
   }, []);
   const loadAllData = async () => {
     try {
-      const [depts, cls, divs, studs, stf, subjs, btchs, prnts, sessions] =
+      const [depts, cls, divs, studs, stf, subjs, btchs, prnts] =
         await Promise.all([
           adminAPI.getDepartments(),
           adminAPI.getClasses(),
@@ -97,7 +99,7 @@ function AdminDashboard({ user, onLogout }) {
           adminAPI.getSubjects(),
           adminAPI.getBatches(),
           adminAPI.getParents(),
-          timetableAPI.getAllSessions(),
+
         ]);
       setDepartments(depts);
       setClasses(cls);
@@ -107,9 +109,185 @@ function AdminDashboard({ user, onLogout }) {
       setSubjects(subjs);
       setBatches(btchs);
       setParents(prnts);
-      setTimetableSessions(sessions);
+
     } catch (error) {
       showMessage("error", "Failed to load data");
+    }
+  };
+
+  // Load attendance records when division and date are selected
+  const loadAttendanceRecords = async () => {
+    if (!attendanceDivision || !attendanceDate) return;
+    try {
+      const data = await adminAPI.getDivisionAttendance(attendanceDivision, attendanceDate);
+      setAttendanceRecords(data.records || []);
+    } catch (error) {
+      showMessage("error", "Failed to load attendance records");
+    }
+  };
+
+  // Handle attendance status update
+  const handleUpdateAttendance = async (studentId, status) => {
+    try {
+      await adminAPI.updateAttendance({
+        student_id: studentId,
+        date: attendanceDate,
+        status: status
+      });
+      showMessage("success", `Attendance marked as ${status}`);
+      loadAttendanceRecords();
+    } catch (error) {
+      showMessage("error", error.response?.data?.detail || "Failed to update attendance");
+    }
+  };
+
+  // Staff edit handlers
+  const handleEditStaff = (staffMember) => {
+    setEditingStaff(staffMember);
+    setStaffForm({
+      staff_id: staffMember.staff_id,
+      first_name: staffMember.first_name,
+      last_name: staffMember.last_name,
+      email: staffMember.email || "",
+      phone: staffMember.phone || "",
+      department_id: staffMember.department_id?.toString() || "",
+      username: "",
+      password: "",
+    });
+    setShowStaffForm(true);
+  };
+
+  const handleUpdateStaff = async (e) => {
+    e.preventDefault();
+    try {
+      await adminAPI.updateStaff(editingStaff.id, {
+        staff_id: staffForm.staff_id,
+        first_name: staffForm.first_name,
+        last_name: staffForm.last_name,
+        email: staffForm.email || null,
+        phone: staffForm.phone || null,
+        department_id: staffForm.department_id ? parseInt(staffForm.department_id) : null,
+      });
+      showMessage("success", "Staff updated successfully!");
+      setShowStaffForm(false);
+      setEditingStaff(null);
+      setStaffForm({
+        staff_id: "",
+        first_name: "",
+        last_name: "",
+        email: "",
+        department_id: "",
+        username: "",
+        password: "",
+      });
+      loadAllData();
+    } catch (error) {
+      showMessage("error", error.response?.data?.detail || "Failed to update staff");
+    }
+  };
+
+  // Student edit handlers
+  const handleEditStudent = (student) => {
+    setEditingStudent(student);
+    setStudentForm({
+      username: "",
+      roll_number: student.roll_number,
+      enrollment_number: student.enrollment_number || "",
+      first_name: student.first_name,
+      last_name: student.last_name,
+      email: student.email || "",
+      phone: student.phone || "",
+      department_id: student.department_id?.toString() || "",
+      class_id: student.class_id?.toString() || "",
+      division_id: student.division_id?.toString() || "",
+      date_of_birth: student.date_of_birth || "",
+      enrollment_year: student.enrollment_year || new Date().getFullYear(),
+    });
+    setShowStudentForm(true);
+  };
+
+  const handleUpdateStudent = async (e) => {
+    e.preventDefault();
+    try {
+      const updateData = {
+        roll_number: studentForm.roll_number,
+        enrollment_number: studentForm.enrollment_number || null,
+        first_name: studentForm.first_name,
+        last_name: studentForm.last_name,
+        email: studentForm.email || null,
+        phone: studentForm.phone || null,
+        date_of_birth: studentForm.date_of_birth || null,
+        enrollment_year: studentForm.enrollment_year ? parseInt(studentForm.enrollment_year) : null,
+      };
+      if (studentForm.division_id) {
+        updateData.division_id = parseInt(studentForm.division_id);
+      }
+      await adminAPI.updateStudent(editingStudent.id, updateData);
+      showMessage("success", "Student updated successfully!");
+      setShowStudentForm(false);
+      setEditingStudent(null);
+      setStudentForm({
+        username: "",
+        roll_number: "",
+        enrollment_number: "",
+        first_name: "",
+        last_name: "",
+        email: "",
+        phone: "",
+        department_id: "",
+        class_id: "",
+        division_id: "",
+        date_of_birth: "",
+        enrollment_year: new Date().getFullYear(),
+      });
+      loadAllData();
+    } catch (error) {
+      showMessage("error", error.response?.data?.detail || "Failed to update student");
+    }
+  };
+
+  // Parent edit handlers
+  const handleEditParent = (parent) => {
+    setEditingParent(parent);
+    setParentForm({
+      student_id: parent.student_id?.toString() || "",
+      first_name: parent.first_name,
+      last_name: parent.last_name,
+      email: parent.email || "",
+      phone: parent.phone || "",
+      relation: parent.relation,
+      username: "",
+      password: ""
+    });
+    setShowParentForm(true);
+  };
+
+  const handleUpdateParent = async (e) => {
+    e.preventDefault();
+    try {
+      await adminAPI.updateParent(editingParent.id, {
+        first_name: parentForm.first_name,
+        last_name: parentForm.last_name,
+        email: parentForm.email || null,
+        phone: parentForm.phone || null,
+        relation: parentForm.relation,
+      });
+      showMessage("success", "Parent updated successfully!");
+      setShowParentForm(false);
+      setEditingParent(null);
+      setParentForm({
+        student_id: "",
+        first_name: "",
+        last_name: "",
+        email: "",
+        phone: "",
+        relation: "father",
+        username: "",
+        password: ""
+      });
+      loadAllData();
+    } catch (error) {
+      showMessage("error", error.response?.data?.detail || "Failed to update parent");
     }
   };
   const showMessage = (type, text) => {
@@ -217,9 +395,7 @@ function AdminDashboard({ user, onLogout }) {
       if (capturedImage) {
         const blob = await fetch(capturedImage).then((r) => r.blob());
         const file = new File([blob], "face.jpg", { type: "image/jpeg" });
-        const faceFormData = new FormData();
-        faceFormData.append("image", file);
-        await adminAPI.registerStudentFace(newStudent.id, faceFormData);
+        await adminAPI.registerStudentFace(newStudent.id, file);
         showMessage("success", "Student created with face registration!");
       } else {
         showMessage("success", "Student created! Register face later.");
@@ -249,42 +425,6 @@ function AdminDashboard({ user, onLogout }) {
     }
   };
 
-  const handleCreateTimetable = async (e) => {
-    e.preventDefault();
-    try {
-      const payload = {
-        ...timetableForm,
-        division_id: parseInt(timetableForm.division_id),
-        batch_id: timetableForm.batch_id ? parseInt(timetableForm.batch_id) : null,
-        subject_id: parseInt(timetableForm.subject_id),
-        staff_id: parseInt(timetableForm.staff_id),
-        day_of_week: parseInt(timetableForm.day_of_week),
-        start_time: timetableForm.start_time,
-        end_time: timetableForm.end_time,
-        session_type: timetableForm.session_type,
-        room_number: timetableForm.room_number || null,
-      };
-
-      await timetableAPI.createSession(payload);
-      showMessage("success", "Timetable session created successfully!");
-      setTimetableForm({
-        division_id: "",
-        batch_id: "",
-        subject_id: "",
-        staff_id: "",
-        day_of_week: "",
-        start_time: "",
-        end_time: "",
-        session_type: "theory",
-        room_number: ""
-      });
-      loadAllData();
-    } catch (error) {
-      const errorMsg = error.response?.data?.detail || "Failed to create timetable session";
-      showMessage("error", errorMsg);
-    }
-  };
-  // Register face for existing student
   const handleRegisterFace = async (studentId) => {
     if (!capturedImage) {
       showMessage("error", "Please capture a face first");
@@ -293,9 +433,7 @@ function AdminDashboard({ user, onLogout }) {
     try {
       const blob = await fetch(capturedImage).then((r) => r.blob());
       const file = new File([blob], "face.jpg", { type: "image/jpeg" });
-      const formData = new FormData();
-      formData.append("image", file);
-      await adminAPI.registerStudentFace(studentId, formData);
+      await adminAPI.registerStudentFace(studentId, file);
       showMessage("success", "Face registered successfully!");
       setSelectedStudentForFace(null);
       setCapturedImage(null);
@@ -329,26 +467,27 @@ function AdminDashboard({ user, onLogout }) {
             className={`tab ${activeTab === "overview" ? "active" : ""}`}
             onClick={() => setActiveTab("overview")}
           >
-            📊 Overview
+            ðŸ“Š Overview
           </button>
           <button
             className={`tab ${activeTab === "structure" ? "active" : ""}`}
             onClick={() => setActiveTab("structure")}
           >
-            🏛️ Academic Structure
+            ðŸ›ï¸ Academic Structure
           </button>
           <button
             className={`tab ${activeTab === "users" ? "active" : ""}`}
             onClick={() => setActiveTab("users")}
           >
-            👥 Users
+            ðŸ‘¥ Users
           </button>
           <button
-            className={`tab ${activeTab === "timetable" ? "active" : ""}`}
-            onClick={() => setActiveTab("timetable")}
+            className={`tab ${activeTab === "attendance" ? "active" : ""}`}
+            onClick={() => setActiveTab("attendance")}
           >
-            🗓️ Timetable
+            Attendance
           </button>
+
         </div>
         {/* OVERVIEW TAB */}
         {activeTab === "overview" && (
@@ -481,7 +620,7 @@ function AdminDashboard({ user, onLogout }) {
                               }
                             }}
                           >
-                            🗑️ Delete
+                            ðŸ—‘ï¸ Delete
                           </button>
                         </td>
                       </tr>
@@ -559,7 +698,7 @@ function AdminDashboard({ user, onLogout }) {
                     </div>
                     <div className="form-actions">
                       <button type="submit" className="btn btn-success">
-                        ✅ Create Class
+                        âœ… Create Class
                       </button>
                       <button
                         type="button"
@@ -626,7 +765,7 @@ function AdminDashboard({ user, onLogout }) {
                                   }
                                 }}
                               >
-                                🗑️ Delete
+                                ðŸ—‘ï¸ Delete
                               </button>
                             </td>
                           </tr>
@@ -718,7 +857,7 @@ function AdminDashboard({ user, onLogout }) {
                     </div>
                     <div className="form-actions">
                       <button type="submit" className="btn btn-success">
-                        ✅ Create Division
+                        âœ… Create Division
                       </button>
                       <button
                         type="button"
@@ -761,7 +900,7 @@ function AdminDashboard({ user, onLogout }) {
                           ? `${dept.name} (${dept.code})`
                           : cls
                             ? `Department ${cls.department_id}`
-                            : "—";
+                            : "â€”";
                         return (
                           <tr key={division.id}>
                             <td>{division.id}</td>
@@ -797,7 +936,7 @@ function AdminDashboard({ user, onLogout }) {
                                   }
                                 }}
                               >
-                                🗑️ Delete
+                                ðŸ—‘ï¸ Delete
                               </button>
                             </td>
                           </tr>
@@ -1054,14 +1193,14 @@ function AdminDashboard({ user, onLogout }) {
                       </div>
                     </div>
                     <div className="form-group">
-                      <label>📸 Face Photo (for AI Recognition)</label>
+                      <label>ðŸ“¸ Face Photo (for AI Recognition)</label>
                       {!showCamera && !capturedImage && (
                         <button
                           type="button"
                           className="btn btn-primary"
                           onClick={() => setShowCamera(true)}
                         >
-                          📷 Open Camera to Capture Face
+                          ðŸ“· Open Camera to Capture Face
                         </button>
                       )}
                       {showCamera && (
@@ -1083,7 +1222,7 @@ function AdminDashboard({ user, onLogout }) {
                               className="btn btn-success"
                               onClick={handleCaptureFace}
                             >
-                              ✓ Capture Face
+                              âœ“ Capture Face
                             </button>
                             <button
                               type="button"
@@ -1108,10 +1247,10 @@ function AdminDashboard({ user, onLogout }) {
                               className="btn btn-warning"
                               onClick={handleRetakeFace}
                             >
-                              🔄 Retake Photo
+                              ðŸ”„ Retake Photo
                             </button>
                             <span className="text-success">
-                              ✓ Face captured successfully
+                              âœ“ Face captured successfully
                             </span>
                           </div>
                         </div>
@@ -1123,7 +1262,7 @@ function AdminDashboard({ user, onLogout }) {
                     </div>
                     <div className="form-actions">
                       <button type="submit" className="btn btn-success">
-                        ✅ Create Student
+                        âœ… Create Student
                       </button>
                       <button
                         type="button"
@@ -1166,8 +1305,15 @@ function AdminDashboard({ user, onLogout }) {
                               ? `${cls?.name || ""} ${division.name}`
                               : student.division_id}
                           </td>
-                          <td>{student.face_registered ? "✅" : "❌"}</td>
+                          <td>{student.face_registered ? "Yes" : "No"}</td>
                           <td>
+                            <button
+                              className="btn btn-warning btn-sm"
+                              onClick={() => handleEditStudent(student)}
+                              style={{ marginRight: '8px' }}
+                            >
+                              Edit
+                            </button>
                             <button
                               className="btn btn-danger btn-sm"
                               onClick={async () => {
@@ -1192,7 +1338,7 @@ function AdminDashboard({ user, onLogout }) {
                                 }
                               }}
                             >
-                              🗑️ Delete
+                              Delete
                             </button>
                           </td>
                         </tr>
@@ -1216,18 +1362,12 @@ function AdminDashboard({ user, onLogout }) {
                 </div>
                 {showStaffForm && (
                   <form
-                    onSubmit={async (e) => {
+                    onSubmit={editingStaff ? handleUpdateStaff : async (e) => {
                       e.preventDefault();
                       try {
                         await adminAPI.createStaff({
                           ...staffForm,
                           department_id: parseInt(staffForm.department_id),
-                          class_id: staffForm.class_id
-                            ? parseInt(staffForm.class_id)
-                            : null,
-                          division_id: staffForm.division_id
-                            ? parseInt(staffForm.division_id)
-                            : null,
                           phone: staffForm.phone || null,
                         });
                         showMessage("success", "Staff created successfully!");
@@ -1238,8 +1378,6 @@ function AdminDashboard({ user, onLogout }) {
                           last_name: "",
                           email: "",
                           department_id: "",
-                          class_id: "",
-                          division_id: "",
                           username: "",
                           password: "",
                         });
@@ -1255,11 +1393,6 @@ function AdminDashboard({ user, onLogout }) {
                     }}
                     className="form-box"
                   >
-                    <div className="alert alert-info">
-                      ℹ️ Assign class and division to make this staff a class
-                      teacher. Class teachers can mark attendance for their
-                      assigned class.
-                    </div>
                     <div className="form-row">
                       <div className="form-group">
                         <label>Staff ID *</label>
@@ -1343,8 +1476,6 @@ function AdminDashboard({ user, onLogout }) {
                             setStaffForm({
                               ...staffForm,
                               department_id: e.target.value,
-                              class_id: "",
-                              division_id: "",
                             })
                           }
                         >
@@ -1355,67 +1486,6 @@ function AdminDashboard({ user, onLogout }) {
                             </option>
                           ))}
                         </select>
-                      </div>
-                    </div>
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label>Class Teacher For (Optional)</label>
-                        <select
-                          value={staffForm.class_id}
-                          disabled={!staffForm.department_id}
-                          onChange={(e) =>
-                            setStaffForm({
-                              ...staffForm,
-                              class_id: e.target.value,
-                              division_id: "",
-                            })
-                          }
-                        >
-                          <option value="">Not a class teacher</option>
-                          {classes
-                            .filter(
-                              (c) =>
-                                c.department_id ===
-                                parseInt(staffForm.department_id),
-                            )
-                            .map((cls) => (
-                              <option key={cls.id} value={cls.id}>
-                                {cls.name}
-                              </option>
-                            ))}
-                        </select>
-                        <small className="text-muted">
-                          Select which class this teacher is responsible for
-                          (1K-6K)
-                        </small>
-                      </div>
-                      <div className="form-group">
-                        <label>Division (Optional)</label>
-                        <select
-                          value={staffForm.division_id}
-                          disabled={!staffForm.class_id}
-                          onChange={(e) =>
-                            setStaffForm({
-                              ...staffForm,
-                              division_id: e.target.value,
-                            })
-                          }
-                        >
-                          <option value="">Select Division</option>
-                          {divisions
-                            .filter(
-                              (d) =>
-                                d.class_id === parseInt(staffForm.class_id),
-                            )
-                            .map((div) => (
-                              <option key={div.id} value={div.id}>
-                                Division {div.name}
-                              </option>
-                            ))}
-                        </select>
-                        <small className="text-muted">
-                          Select division A or B
-                        </small>
                       </div>
                     </div>
                     <div className="form-row">
@@ -1450,12 +1520,24 @@ function AdminDashboard({ user, onLogout }) {
                     </div>
                     <div className="form-actions">
                       <button type="submit" className="btn btn-success">
-                        ✅ Create Staff
+                        {editingStaff ? "Update Staff" : "Create Staff"}
                       </button>
                       <button
                         type="button"
                         className="btn btn-secondary"
-                        onClick={() => setShowStaffForm(false)}
+                        onClick={() => {
+                          setShowStaffForm(false);
+                          setEditingStaff(null);
+                          setStaffForm({
+                            staff_id: "",
+                            first_name: "",
+                            last_name: "",
+                            email: "",
+                            department_id: "",
+                            username: "",
+                            password: "",
+                          });
+                        }}
                       >
                         Cancel
                       </button>
@@ -1491,6 +1573,13 @@ function AdminDashboard({ user, onLogout }) {
                           </td>
                           <td>
                             <button
+                              className="btn btn-warning btn-sm"
+                              onClick={() => handleEditStaff(s)}
+                              style={{ marginRight: '8px' }}
+                            >
+                              Edit
+                            </button>
+                            <button
                               className="btn btn-danger btn-sm"
                               onClick={async () => {
                                 if (
@@ -1514,7 +1603,7 @@ function AdminDashboard({ user, onLogout }) {
                                 }
                               }}
                             >
-                              🗑️ Delete
+                              Delete
                             </button>
                           </td>
                         </tr>
@@ -1566,7 +1655,7 @@ function AdminDashboard({ user, onLogout }) {
                     className="form-box"
                   >
                     <div className="alert alert-info">
-                      ℹ️ Parent accounts are linked to a specific student.
+                      â„¹ï¸ Parent accounts are linked to a specific student.
                       Parents can view their child's attendance.
                     </div>
                     <div className="form-row">
@@ -1704,7 +1793,7 @@ function AdminDashboard({ user, onLogout }) {
                     </div>
                     <div className="form-actions">
                       <button type="submit" className="btn btn-success">
-                        ✅ Create Parent Account
+                        âœ… Create Parent Account
                       </button>
                       <button
                         type="button"
@@ -1759,6 +1848,13 @@ function AdminDashboard({ user, onLogout }) {
                             )}
                             <td>
                               <button
+                                className="btn btn-warning btn-sm"
+                                onClick={() => handleEditParent(parent)}
+                                style={{ marginRight: '8px' }}
+                              >
+                                Edit
+                              </button>
+                              <button
                                 className="btn btn-danger btn-sm"
                                 onClick={async () => {
                                   if (
@@ -1782,7 +1878,7 @@ function AdminDashboard({ user, onLogout }) {
                                   }
                                 }}
                               >
-                                🗑️ Delete
+                                Delete
                               </button>
                             </td>
                           </tr>
@@ -1795,218 +1891,120 @@ function AdminDashboard({ user, onLogout }) {
             )}
           </div>
         )}
-        {/* TIMETABLE TAB */}
-        {activeTab === "timetable" && (
-          <div>
-            <h2>Timetable Management</h2>
-            
-            {/* CREATE TIMETABLE SESSION */}
-            <div className="card">
-              <h3>Create Timetable Session</h3>
-              <form onSubmit={handleCreateTimetable} className="form-box">
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Division *</label>
-                    <select
-                      required
-                      value={timetableForm.division_id}
-                      onChange={(e) => setTimetableForm({ ...timetableForm, division_id: e.target.value })}
-                    >
-                      <option value="">Select Division</option>
-                      {divisions.map((div) => {
-                        const cls = classes.find(c => c.id === div.class_id)
-                        return (
-                          <option key={div.id} value={div.id}>
-                            {cls?.name || ''} {div.name}
-                          </option>
-                        )
-                      })}
-                    </select>
-                  </div>
-                  
-                  <div className="form-group">
-                    <label>Batch (Optional for Lab)</label>
-                    <select
-                      value={timetableForm.batch_id}
-                      onChange={(e) => setTimetableForm({ ...timetableForm, batch_id: e.target.value })}
-                    >
-                      <option value="">None (Theory)</option>
-                      {batches.filter(b => b.division_id === parseInt(timetableForm.division_id)).map((batch) => (
-                        <option key={batch.id} value={batch.id}>
-                          {batch.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label>Subject *</label>
-                    <select
-                      required
-                      value={timetableForm.subject_id}
-                      onChange={(e) => setTimetableForm({ ...timetableForm, subject_id: e.target.value })}
-                    >
-                      <option value="">Select Subject</option>
-                      {subjects.map((subj) => (
-                        <option key={subj.id} value={subj.id}>
-                          {subj.name} ({subj.code})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+        {/* ATTENDANCE TAB */}
+        {activeTab === "attendance" && (
+          <div className="card">
+            <div className="card-header">
+              <h3>Attendance Management</h3>
+              <p className="text-muted">
+                Manage student attendance by division and date. Mark students as present even if they didn't mark their attendance.
+              </p>
+            </div>
+            <div className="form-box">
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Date *</label>
+                  <input
+                    type="date"
+                    value={attendanceDate}
+                    onChange={(e) => setAttendanceDate(e.target.value)}
+                  />
                 </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Staff *</label>
-                    <select
-                      required
-                      value={timetableForm.staff_id}
-                      onChange={(e) => setTimetableForm({ ...timetableForm, staff_id: e.target.value })}
-                    >
-                      <option value="">Select Staff</option>
-                      {staff.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.first_name} {s.last_name} ({s.staff_id})
+                <div className="form-group">
+                  <label>Division *</label>
+                  <select
+                    value={attendanceDivision}
+                    onChange={(e) => setAttendanceDivision(e.target.value)}
+                  >
+                    <option value="">Select Division</option>
+                    {divisions.map((div) => {
+                      const cls = classes.find((c) => c.id === div.class_id);
+                      return (
+                        <option key={div.id} value={div.id}>
+                          {cls?.name || ""} {div.name}
                         </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label>Day of Week *</label>
-                    <select
-                      required
-                      value={timetableForm.day_of_week}
-                      onChange={(e) => setTimetableForm({ ...timetableForm, day_of_week: e.target.value })}
-                    >
-                      <option value="">Select Day</option>
-                      <option value="0">Monday</option>
-                      <option value="1">Tuesday</option>
-                      <option value="2">Wednesday</option>
-                      <option value="3">Thursday</option>
-                      <option value="4">Friday</option>
-                      <option value="5">Saturday</option>
-                      <option value="6">Sunday</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label>Session Type *</label>
-                    <select
-                      required
-                      value={timetableForm.session_type}
-                      onChange={(e) => setTimetableForm({ ...timetableForm, session_type: e.target.value })}
-                    >
-                      <option value="theory">Theory</option>
-                      <option value="lab">Lab</option>
-                    </select>
-                  </div>
+                      );
+                    })}
+                  </select>
                 </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Start Time *</label>
-                    <input
-                      type="time"
-                      required
-                      value={timetableForm.start_time}
-                      onChange={(e) => setTimetableForm({ ...timetableForm, start_time: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label>End Time *</label>
-                    <input
-                      type="time"
-                      required
-                      value={timetableForm.end_time}
-                      onChange={(e) => setTimetableForm({ ...timetableForm, end_time: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label>Room Number</label>
-                    <input
-                      type="text"
-                      value={timetableForm.room_number}
-                      onChange={(e) => setTimetableForm({ ...timetableForm, room_number: e.target.value })}
-                      placeholder="e.g., Lab 101"
-                    />
-                  </div>
-                </div>
-
-                <div className="form-actions">
-                  <button type="submit" className="btn btn-primary">
-                    Create Session
+                <div className="form-group" style={{ display: 'flex', alignItems: 'flex-end' }}>
+                  <button
+                    className="btn btn-primary"
+                    onClick={loadAttendanceRecords}
+                    disabled={!attendanceDivision || !attendanceDate}
+                  >
+                    Load Attendance
                   </button>
                 </div>
-              </form>
+              </div>
             </div>
-
-            {/* ALL TIMETABLE SESSIONS */}
-            <div className="card">
-              <h3>All Timetable Sessions ({timetableSessions.length})</h3>
+            {attendanceRecords.length > 0 && (
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Day</th>
-                    <th>Time</th>
-                    <th>Division/Batch</th>
-                    <th>Subject</th>
-                    <th>Staff</th>
-                    <th>Type</th>
-                    <th>Room</th>
+                    <th>Roll No</th>
+                    <th>Student Name</th>
+                    <th>Status</th>
+                    <th>Marked Method</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {timetableSessions.length === 0 ? (
-                    <tr>
-                      <td colSpan="8" className="text-muted">
-                        No timetable sessions created yet.
+                  {attendanceRecords.map((record) => (
+                    <tr key={record.student_id}>
+                      <td>{record.roll_number}</td>
+                      <td>{record.student_name}</td>
+                      <td>
+                        <span
+                          className={`badge badge-${
+                            record.status === "present"
+                              ? "success"
+                              : record.status === "late"
+                              ? "warning"
+                              : record.status === "absent"
+                              ? "danger"
+                              : "secondary"
+                          }`}
+                        >
+                          {record.status}
+                        </span>
+                      </td>
+                      <td>{record.marked_method || "-"}</td>
+                      <td>
+                        <button
+                          className="btn btn-success btn-sm"
+                          onClick={() => handleUpdateAttendance(record.student_id, "present")}
+                          style={{ marginRight: '4px' }}
+                          disabled={record.status === "present"}
+                        >
+                          Mark Present
+                        </button>
+                        <button
+                          className="btn btn-warning btn-sm"
+                          onClick={() => handleUpdateAttendance(record.student_id, "late")}
+                          style={{ marginRight: '4px' }}
+                          disabled={record.status === "late"}
+                        >
+                          Mark Late
+                        </button>
+                        <button
+                          className="btn btn-danger btn-sm"
+                          onClick={() => handleUpdateAttendance(record.student_id, "absent")}
+                          disabled={record.status === "absent"}
+                        >
+                          Mark Absent
+                        </button>
                       </td>
                     </tr>
-                  ) : (
-                    timetableSessions.map((session) => (
-                      <tr key={session.id}>
-                        <td>{session.day}</td>
-                        <td>{session.start_time} - {session.end_time}</td>
-                        <td>
-                          {session.division}
-                          {session.batch && ` - ${session.batch}`}
-                        </td>
-                        <td>{session.subject}</td>
-                        <td>{session.staff}</td>
-                        <td>
-                          {session.session_type === 'theory' ? 'Theory' : 'Lab'}
-                        </td>
-                        <td>{session.room_number || '-'}</td>
-                        <td>
-                          <button
-                            className="btn btn-danger btn-sm"
-                            onClick={async () => {
-                              if (window.confirm(`Delete this timetable session?`)) {
-                                try {
-                                  await timetableAPI.deleteSession(session.id);
-                                  showMessage("success", "Session deleted successfully!");
-                                  loadAllData();
-                                } catch (error) {
-                                  const errorMsg = error.response?.data?.detail || "Failed to delete session";
-                                  showMessage("error", errorMsg);
-                                }
-                              }
-                            }}
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
+                  ))}
                 </tbody>
               </table>
-            </div>
+            )}
+            {attendanceDivision && attendanceDate && attendanceRecords.length === 0 && (
+              <div className="alert alert-info">
+                No students found in this division or no attendance records. Click "Load Attendance" to fetch records.
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -2014,3 +2012,4 @@ function AdminDashboard({ user, onLogout }) {
   );
 }
 export default AdminDashboard;
+

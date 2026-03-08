@@ -1,4 +1,4 @@
-﻿"""
+"""
 Division Model - Represents class divisions/sections.
 Example: Division A, B, C within a class
 """
@@ -12,6 +12,7 @@ from app.core.database import Base
 class Division(Base):
     """
     Division model representing sections within a class.
+    Each division has its own timetable.
     """
     __tablename__ = "divisions"
     
@@ -24,8 +25,9 @@ class Division(Base):
     class_ = relationship("Class", back_populates="divisions")
     batches = relationship("Batch", back_populates="division", cascade="all, delete-orphan")
     students = relationship("Student", back_populates="division")
+    timetable_sessions = relationship("TimetableSession", back_populates="division")
     
-    # Day-wise attendance only
+    # NEW: Day-wise attendance
     daily_attendance = relationship("DailyAttendance", back_populates="division", cascade="all, delete-orphan")
     grace_periods = relationship("GracePeriod", back_populates="division", cascade="all, delete-orphan")
     

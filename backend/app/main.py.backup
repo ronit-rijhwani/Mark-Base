@@ -2,7 +2,7 @@
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import init_db
-from app.api import auth, admin, staff, student, parent, attendance_daywise
+from app.api import auth, admin, staff, student, parent, attendance_daywise, timetable
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -10,14 +10,13 @@ app = FastAPI(
     description="Day-wise Attendance Management System for Educational Institutions"
 )
 
-# Configure CORS - Allow all origins for development
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],
 )
 
 # Include routers
@@ -26,6 +25,9 @@ app.include_router(admin.router)
 app.include_router(staff.router)
 app.include_router(student.router)
 app.include_router(parent.router)
+
+# Lecture-wise timetable system (used for staff session assignment)
+app.include_router(timetable.router)
 
 # Day-wise attendance system
 app.include_router(attendance_daywise.router)
@@ -36,13 +38,13 @@ async def startup_event():
     print("=" * 60)
     print("  MARKBASE - DAY-WISE ATTENDANCE SYSTEM")
     print("=" * 60)
-    print("✓ Day-wise Attendance: ACTIVE")
-    print("✓ Grace Period: 9:15-9:30 AM")
-    print("✓ Auto Status: Present/Late/Absent")
-    print("✓ Leave Management: ENABLED")
+    print("✅ Day-wise Attendance: ACTIVE")
+    print("✅ Grace Period: 9:15-9:30 AM")
+    print("✅ Auto Status: Present/Late/Absent")
+    print("✅ Leave Management: ENABLED")
     print("=" * 60)
-    print("📡 API Endpoints: /api/attendance/daywise/*")
-    print("📖 Documentation: /docs")
+    print("📍 API Endpoints: /api/attendance/daywise/*")
+    print("📚 Documentation: /docs")
     print("=" * 60)
 
 @app.get("/")

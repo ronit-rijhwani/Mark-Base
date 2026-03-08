@@ -1,4 +1,4 @@
-"""
+﻿"""
 Subject Model - Represents academic subjects/courses.
 Example: Data Structures, Database Management, etc.
 """
@@ -24,7 +24,7 @@ class Subject(Base):
     
     # Relationships
     class_ = relationship("Class", back_populates="subjects")
-    timetable_sessions = relationship("TimetableSession", back_populates="subject")
     
     def __repr__(self):
         return f"<Subject(id={self.id}, name='{self.name}', code='{self.code}')>"
+

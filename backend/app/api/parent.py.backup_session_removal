@@ -1,4 +1,4 @@
-﻿"""
+"""
 Parent API endpoints for viewing linked student's attendance.
 Parents can view attendance data but cannot modify anything.
 """
@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from app.core.database import get_db
+from app.services.attendance_service import AttendanceService
 from app.models import Parent, Student, Subject
 
 
@@ -97,7 +98,7 @@ def get_child_daily_log(parent_id: int, limit: int = 30, db: Session = Depends(g
     student_id = parent.student_id
     
     # Get recent attendance records
-    from app.models import DailyAttendance
+    from app.models import AttendanceRecord, AttendanceSession
     records = db.query(AttendanceRecord).join(
         AttendanceSession
     ).filter(
@@ -139,7 +140,7 @@ def get_child_late_records(parent_id: int, db: Session = Depends(get_db)):
     student_id = parent.student_id
     
     # Get late records
-    from app.models import DailyAttendance
+    from app.models import AttendanceRecord, AttendanceSession
     late_records = db.query(AttendanceRecord).join(
         AttendanceSession
     ).filter(
@@ -183,7 +184,7 @@ def get_child_absent_records(parent_id: int, db: Session = Depends(get_db)):
     student_id = parent.student_id
     
     # Get absent records
-    from app.models import DailyAttendance
+    from app.models import AttendanceRecord, AttendanceSession
     absent_records = db.query(AttendanceRecord).join(
         AttendanceSession
     ).filter(
@@ -229,7 +230,7 @@ def get_parent_dashboard(parent_id: int, db: Session = Depends(get_db)):
     overall_stats = AttendanceService.get_student_attendance_percentage(db, student_id)
     
     # Recent attendance
-    from app.models import DailyAttendance
+    from app.models import AttendanceRecord, AttendanceSession
     recent_records = db.query(AttendanceRecord).join(
         AttendanceSession
     ).filter(
@@ -259,5 +260,3 @@ def get_parent_dashboard(parent_id: int, db: Session = Depends(get_db)):
             for r in recent_records
         ]
     }
-
-

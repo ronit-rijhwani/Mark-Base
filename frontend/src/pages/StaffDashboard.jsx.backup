@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Staff Dashboard - Day-wise Attendance Management
  * Features:
  * - Turn On/Off attendance for assigned division
@@ -68,7 +68,7 @@ function StaffDashboard({ user, onLogout }) {
           class_name: staffData.class_name
         })
       } else {
-        // No pre-assigned division � show selector
+        // No pre-assigned division — show selector
         setShowDivisionSelector(true)
       }
     } catch (err) {
@@ -83,11 +83,7 @@ function StaffDashboard({ user, onLogout }) {
   const loadAllClasses = async () => {
     try {
       const data = await adminAPI.getClasses()
-      // Remove duplicates based on class ID
-      const uniqueClasses = data.filter((cls, index, self) =>
-        index === self.findIndex((c) => c.id === cls.id)
-      )
-      setAllClasses(uniqueClasses)
+      setAllClasses(data)
     } catch (err) {
       console.error('Failed to load classes:', err)
       setMessage({ type: 'error', text: 'Failed to load classes.' })
@@ -351,21 +347,21 @@ function StaffDashboard({ user, onLogout }) {
                     onClick={handleToggleAttendance}
                     className={`btn btn-lg ${isAttendanceActive ? 'btn-danger' : 'btn-success'}`}
                   >
-                    {isAttendanceActive ? '?? Turn Off Attendance' : '?? Turn On Attendance'}
+                    {isAttendanceActive ? '🔴 Turn Off Attendance' : '🟢 Turn On Attendance'}
                   </button>
                   {isAttendanceActive && (
                     <p className="attendance-status">
-                      ? Attendance is active. Grace period: 9:15 AM - 9:30 AM
+                      ✅ Attendance is active. Grace period: 9:15 AM - 9:30 AM
                     </p>
                   )}
                 </>
               ) : isBeforeWindow ? (
                 <p style={{ color: '#888', fontStyle: 'italic', margin: '10px 0' }}>
-                  ? Attendance window opens at 9:00 AM.
+                  ⏳ Attendance window opens at 9:00 AM.
                 </p>
               ) : (
                 <p style={{ color: '#e53935', fontWeight: '600', margin: '10px 0' }}>
-                  ?? Attendance window has closed (cutoff: 9:45 AM). You can still view records below.
+                  🚫 Attendance window has closed (cutoff: 9:45 AM). You can still view records below.
                 </p>
               )}
             </div>
@@ -405,7 +401,7 @@ function StaffDashboard({ user, onLogout }) {
                 onClick={() => setShowCamera(!showCamera)}
                 className="btn btn-primary"
               >
-                {showCamera ? '?? Hide Camera' : '?? Show Camera'}
+                {showCamera ? '📷 Hide Camera' : '📷 Show Camera'}
               </button>
 
               {showCamera && (
@@ -420,7 +416,7 @@ function StaffDashboard({ user, onLogout }) {
                     onClick={handleMarkAttendanceWithFace} 
                     className="btn btn-success btn-lg"
                   >
-                    ?? Capture &amp; Mark Attendance
+                    📸 Capture &amp; Mark Attendance
                   </button>
                 </div>
               )}
@@ -488,5 +484,4 @@ function StaffDashboard({ user, onLogout }) {
 }
 
 export default StaffDashboard
-
 
