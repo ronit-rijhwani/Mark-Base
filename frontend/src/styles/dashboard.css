@@ -463,6 +463,264 @@
   }
 }
 
+/* ==================== ATTENDANCE ENHANCEMENTS ==================== */
+
+/* Status Toggle Pills (segmented control) */
+.status-toggle {
+  display: inline-flex;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  background-color: var(--primary-bg);
+}
+
+.status-pill {
+  padding: 5px 14px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  text-transform: capitalize;
+  position: relative;
+}
+
+.status-pill:not(:last-child) {
+  border-right: 1px solid var(--border-color);
+}
+
+.status-pill:hover:not(.active):not(:disabled) {
+  background: var(--tertiary-bg);
+  color: var(--text-primary);
+}
+
+.status-pill.present.active {
+  background-color: var(--success);
+  color: white;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.status-pill.late.active {
+  background-color: var(--warning);
+  color: var(--primary-bg);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.status-pill.absent.active {
+  background-color: var(--danger);
+  color: white;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.status-pill:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.status-pill .pill-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  vertical-align: middle;
+}
+
+/* Row saving animation */
+.row-saving {
+  opacity: 0.7;
+  animation: rowPulse 1s ease-in-out infinite;
+}
+
+@keyframes rowPulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+/* Attendance Summary Bar */
+.attendance-summary-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: var(--tertiary-bg);
+  border-radius: var(--radius-md);
+  margin: var(--spacing-md) 0;
+  flex-wrap: wrap;
+  border: 1px solid var(--border-color);
+}
+
+.attendance-summary-bar .summary-stats {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.attendance-summary-bar .summary-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.attendance-summary-bar .summary-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.attendance-summary-bar .summary-dot.present { background-color: var(--success); }
+.attendance-summary-bar .summary-dot.late { background-color: var(--warning); }
+.attendance-summary-bar .summary-dot.absent { background-color: var(--danger); }
+.attendance-summary-bar .summary-dot.unmarked { background-color: var(--text-secondary); }
+
+.attendance-summary-bar .summary-divider {
+  width: 1px;
+  height: 20px;
+  background-color: var(--border-color);
+  margin: 0 4px;
+}
+
+.attendance-summary-bar .bulk-actions {
+  margin-left: auto;
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.attendance-summary-bar .bulk-actions .btn {
+  padding: 4px 12px;
+  font-size: 0.8rem;
+}
+
+/* Notes inline editor */
+.note-row td {
+  padding-top: 0 !important;
+  border-bottom: 2px solid var(--accent-color);
+}
+
+.note-editor {
+  display: flex;
+  gap: var(--spacing-xs);
+  align-items: flex-start;
+  padding: var(--spacing-xs) 0;
+}
+
+.note-editor textarea {
+  flex: 1;
+  min-height: 50px;
+  max-height: 120px;
+  padding: var(--spacing-xs);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background-color: var(--primary-bg);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.85rem;
+  resize: vertical;
+  line-height: 1.4;
+}
+
+.note-editor textarea:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px rgba(0, 217, 255, 0.15);
+}
+
+.note-editor .note-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.note-editor .note-char-count {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-align: right;
+  margin-top: 2px;
+}
+
+/* Note icon button */
+.btn-note {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+  color: var(--text-secondary);
+}
+
+.btn-note:hover {
+  background: var(--tertiary-bg);
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.btn-note.has-note {
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+/* Row status flash on success */
+.row-flash-success {
+  animation: flashGreen 0.6s ease;
+}
+
+@keyframes flashGreen {
+  0% { background-color: transparent; }
+  30% { background-color: rgba(76, 175, 80, 0.2); }
+  100% { background-color: transparent; }
+}
+
+/* Badge additions for consistency */
+.badge-success {
+  background-color: var(--success);
+  color: white;
+}
+
+.badge-warning {
+  background-color: var(--warning);
+  color: var(--primary-bg);
+}
+
+.badge-danger {
+  background-color: var(--danger);
+  color: white;
+}
+
+.badge-secondary {
+  background-color: var(--tertiary-bg);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.badge-info {
+  background-color: rgba(0, 217, 255, 0.2);
+  color: var(--accent-color);
+  border: 1px solid var(--accent-color);
+}
+
+/* Alert info style */
+.alert-info {
+  background-color: rgba(0, 217, 255, 0.1);
+  border-left: 4px solid var(--accent-color);
+  color: var(--text-primary);
+}
+
+/* Attendance filter row */
+.attendance-filters .form-row {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  align-items: flex-end;
+}
+
 @media (max-width: 768px) {
   .dashboard-header {
     flex-direction: column;
@@ -484,4 +742,28 @@
   .form-actions {
     flex-direction: column;
   }
+
+  .attendance-summary-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .attendance-summary-bar .bulk-actions {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .attendance-summary-bar .bulk-actions .btn {
+    flex: 1;
+  }
+
+  .status-toggle {
+    flex-direction: column;
+  }
+
+  .status-pill:not(:last-child) {
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+  }
 }
+

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import Webcam from 'react-webcam'
-import { staffAPI, daywiseAttendanceAPI, adminAPI } from '../services/api'
+import api, { staffAPI, daywiseAttendanceAPI, adminAPI } from '../services/api'
 import '../styles/dashboard.css'
 
 function StaffDashboard({ user, onLogout }) {
@@ -23,6 +23,7 @@ function StaffDashboard({ user, onLogout }) {
   const [allDivisions, setAllDivisions] = useState([])
   const [selectedClassId, setSelectedClassId] = useState('')
   const [selectedDivisionId, setSelectedDivisionId] = useState('')
+  const [staffDepartmentId, setStaffDepartmentId] = useState(null)
 
   useEffect(() => {
     loadStaffDivision()
@@ -75,6 +76,7 @@ function StaffDashboard({ user, onLogout }) {
   const loadStaffDivision = async () => {
     try {
       const staffData = await staffAPI.getStaffById(user.staff_id)
+      setStaffDepartmentId(staffData.department_id)
       if (staffData.division_id) {
         setDivision({
           id: staffData.division_id,
@@ -95,7 +97,14 @@ function StaffDashboard({ user, onLogout }) {
 
   const loadAllClasses = async () => {
     try {
-      const data = await adminAPI.getClasses()
+      // Scope classes to staff's department
+      let data
+      if (staffDepartmentId) {
+        const response = await api.get(`/api/admin/classes`, { params: { department_id: staffDepartmentId } })
+        data = response.data
+      } else {
+        data = await adminAPI.getClasses()
+      }
       setAllClasses(data)
     } catch (err) {
       setMessage({ type: 'error', text: 'Failed to load classes.' })
@@ -306,8 +315,8 @@ function StaffDashboard({ user, onLogout }) {
 
   const now = new Date()
   const currentTotalMinutes = now.getHours() * 60 + now.getMinutes()
-  const windowStart = 9 * 60 + 15    // 9:15 AM
-  const windowEnd = 9 * 60 + 45      // 9:45 AM
+  const windowStart = 11 * 60 + 0    // 11:00 AM
+  const windowEnd = 11 * 60 + 45      // 11:45 AM
   
   const isBeforeWindow = currentTotalMinutes < windowStart
   const isAfterWindow = currentTotalMinutes > windowEnd
@@ -334,7 +343,7 @@ function StaffDashboard({ user, onLogout }) {
 
       <div className="dashboard-content">
         <div className="alert alert-warning" style={{ backgroundColor: '#fff3cd', color: '#856404', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #ffeeba', fontWeight: 'bold' }}>
-          📌 Note: Session must be turned on by the staff at exactly 9:15 AM. Window closes at 9:45 AM.
+          📌 Note: Session must be turned on by the staff at exactly 11:00 AM. Window closes at 11:45 AM.
         </div>
 
         {message.text && !isAttendanceActive && (
@@ -361,13 +370,13 @@ function StaffDashboard({ user, onLogout }) {
 
              {isBeforeWindow && (
                 <p style={{ color: '#888', fontStyle: 'italic', fontSize: '18px', marginTop: '20px' }}>
-                  ⏳ Attendance window opens at 9:15 AM.
+                  ⏳ Attendance window opens at 11:00 AM.
                 </p>
              )}
 
              {isAfterWindow && (
                 <p style={{ color: '#e53935', fontWeight: '600', fontSize: '18px', marginTop: '20px' }}>
-                  🚫 Attendance will start tomorrow at 9:15 AM.
+                  🚫 Attendance will start tomorrow at 11:00 AM.
                 </p>
              )}
            </div>
@@ -384,7 +393,7 @@ function StaffDashboard({ user, onLogout }) {
                     ✅ Session is active.
                     <br/>
                     <span style={{ fontSize: '0.9em', color: '#666', fontWeight: 'normal' }}>
-                      Present deadline: 9:30 AM | Late deadline: 9:45 AM
+                      Present deadline: 11:30 AM | Late deadline: 11:45 AM
                     </span>
                   </p>
                 </div>

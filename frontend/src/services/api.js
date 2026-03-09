@@ -67,8 +67,9 @@ export const adminAPI = {
   },
 
   // Divisions
-  getDivisions: async () => {
-    const response = await api.get('/api/admin/divisions')
+  getDivisions: async (classId) => {
+    const params = classId ? { class_id: classId } : {}
+    const response = await api.get('/api/admin/divisions', { params })
     return response.data
   },
 
@@ -205,6 +206,11 @@ export const adminAPI = {
     const response = await api.put('/api/admin/attendance', data)
     return response.data
   },
+
+  bulkUpdateAttendance: async (data) => {
+    const response = await api.put('/api/admin/attendance/bulk', data)
+    return response.data
+  },
 }
 
 // ===========================
@@ -306,10 +312,22 @@ export const daywiseAttendanceAPI = {
     const formData = new FormData()
     formData.append('image', imageFile)
 
-    const faceResponse = await api.post('/api/auth/login/face', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
+    // Step 1: Identify student via face recognition
+    let faceResponse
+    try {
+      faceResponse = await api.post('/api/auth/login/face', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+    } catch (err) {
+      const detail = err.response?.data?.detail || 'Face not recognized. Please try again.'
+      throw { response: { data: { detail } } }
+    }
 
+    if (!faceResponse.data?.student_id) {
+      throw { response: { data: { detail: 'Face recognized but student ID missing from response.' } } }
+    }
+
+    // Step 2: Mark attendance with recognized student
     const currentTime = new Date().toTimeString().split(' ')[0]
 
     const attendanceResponse = await api.post('/api/attendance/daywise/mark', {

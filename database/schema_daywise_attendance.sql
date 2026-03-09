@@ -1,7 +1,7 @@
 -- ========================================
 -- DAY-WISE ATTENDANCE SCHEMA
 -- Replaces lecture-based attendance with daily attendance
--- Grace Period: 9:15 AM - 9:30 AM
+-- Grace Period: 11:00 AM - 11:30 AM
 -- ========================================
 
 -- Drop old attendance tables (if converting)
@@ -36,8 +36,8 @@ CREATE TABLE IF NOT EXISTS daily_attendance (
 CREATE TABLE IF NOT EXISTS attendance_config (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     division_id INTEGER,  -- NULL means applies to all divisions
-    grace_period_start TIME DEFAULT '09:15:00',
-    grace_period_end TIME DEFAULT '09:30:00',
+    grace_period_start TIME DEFAULT '11:00:00',
+    grace_period_end TIME DEFAULT '11:30:00',
     late_threshold_minutes INTEGER DEFAULT 15,  -- After grace period, how late is "late"?
     auto_absent_enabled BOOLEAN DEFAULT 1,  -- Auto-mark absent if not checked in
     auto_absent_time TIME DEFAULT '23:59:59',  -- When to auto-mark absent
@@ -97,14 +97,14 @@ CREATE INDEX IF NOT EXISTS idx_leave_requests_status ON leave_requests(status);
 
 -- Insert default attendance configuration
 INSERT OR IGNORE INTO attendance_config (id, division_id, grace_period_start, grace_period_end) 
-VALUES (1, NULL, '09:15:00', '09:30:00');
+VALUES (1, NULL, '11:00:00', '11:30:00');
 
 -- ========================================
 -- ATTENDANCE CALCULATION LOGIC
 -- ========================================
 -- Status determination rules:
--- 1. Check-in <= 09:30:00 (grace_period_end) → PRESENT
--- 2. Check-in > 09:30:00 and <= 09:45:00 → LATE
--- 3. Check-in > 09:45:00 → ABSENT (or LATE with notes)
+-- 1. Check-in <= 11:29:59 (grace_period_end) → PRESENT
+-- 2. Check-in >= 11:30:00 and <= 11:44:59 → LATE
+-- 3. Check-in >= 11:45:00 → ABSENT (or LATE with notes)
 -- 4. No check-in by 23:59:59 → Auto-marked ABSENT
 -- ========================================

@@ -37,7 +37,7 @@ async def startup_event():
     print("  MARKBASE - DAY-WISE ATTENDANCE SYSTEM")
     print("=" * 60)
     print("[OK] Day-wise Attendance: ACTIVE")
-    print("[OK] Grace Period: 9:15-9:30 AM")
+    print("[OK] Grace Period: 11:00-11:30 AM")
     print("[OK] Auto Status: Present/Late/Absent")
     print("[OK] Leave Management: ENABLED")
     print("=" * 60)
@@ -53,7 +53,7 @@ def root():
         "mode": "Day-wise Attendance Only",
         "features": [
             "Day-wise attendance (one per day)",
-            "Grace period: 9:15-9:30 AM",
+            "Grace period: 11:00-11:30 AM",
             "Auto status detection",
             "Leave management",
             "Bulk marking for divisions",

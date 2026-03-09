@@ -1,6 +1,6 @@
 """
 Attendance Models - Day-wise attendance tracking.
-Implements 9:15-9:30 grace period logic.
+Implements 11:00-11:30 grace period logic.
 """
 
 from sqlalchemy import Column, Integer, String, DateTime, Date, Time, ForeignKey, Text, Boolean, CheckConstraint, UniqueConstraint
@@ -29,7 +29,7 @@ class DailyAttendance(Base):
     __table_args__ = (
         UniqueConstraint('student_id', 'date', name='uq_student_date'),
         CheckConstraint("status IN ('present', 'late', 'absent')"),
-        CheckConstraint("marked_method IN ('face_recognition', 'manual', 'system', 'admin_manual')"),
+        CheckConstraint("marked_method IN ('face_recognition', 'manual', 'system')"),
     )
     
     student = relationship("Student", back_populates="daily_attendance")
@@ -41,8 +41,8 @@ class GracePeriod(Base):
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     division_id = Column(Integer, ForeignKey('divisions.id', ondelete='CASCADE'))
-    grace_start_time = Column(Time, nullable=False, default='09:15:00')
-    grace_end_time = Column(Time, nullable=False, default='09:30:00')
+    grace_start_time = Column(Time, nullable=False, default='11:00:00')
+    grace_end_time = Column(Time, nullable=False, default='11:30:00')
     late_threshold_minutes = Column(Integer, default=15)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -75,7 +75,7 @@ class LeaveRequest(Base):
 
 class AttendanceSession(Base):
     """Tracks whether attendance is currently active for a division on a given day.
-    Staff starts a session → students scan faces → session auto-closes at 9:45 AM."""
+    Staff starts a session → students scan faces → session auto-closes at 11:45 AM."""
     __tablename__ = 'attendance_sessions'
     
     id = Column(Integer, primary_key=True, autoincrement=True)

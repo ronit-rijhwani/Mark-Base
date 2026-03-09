@@ -120,6 +120,17 @@ class UpdateAttendanceRequest(BaseModel):
     date: str  # Format: "YYYY-MM-DD"
     status: str  # "present", "absent", "late"
     reason: Optional[str] = None
+    admin_id: Optional[int] = None
+    notes: Optional[str] = None  # Max 500 chars
+
+
+class BulkUpdateAttendanceRequest(BaseModel):
+    division_id: int
+    date: str  # Format: "YYYY-MM-DD"
+    status: str  # "present", "absent", "late"
+    admin_id: Optional[int] = None
+    student_ids: Optional[List[int]] = None  # None = all students in division
+    only_unmarked: bool = False  # If true, only update students without a record
 
 
 # ==================== DEPARTMENT ENDPOINTS ====================
@@ -631,12 +642,19 @@ def update_attendance(request: UpdateAttendanceRequest, db: Session = Depends(ge
     """
     from datetime import datetime
     from app.models import DailyAttendance
-    from sqlalchemy import time as sql_time
     
     try:
         attendance_date = datetime.strptime(request.date, "%Y-%m-%d").date()
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+    
+    # Prevent future dates
+    if attendance_date > date.today():
+        raise HTTPException(status_code=400, detail="Cannot mark attendance for a future date")
+    
+    # Validate notes length
+    if request.notes and len(request.notes) > 500:
+        raise HTTPException(status_code=400, detail="Notes must be 500 characters or fewer")
     
     # Validate student exists
     student = db.query(Student).filter(Student.id == request.student_id).first()
@@ -653,20 +671,24 @@ def update_attendance(request: UpdateAttendanceRequest, db: Session = Depends(ge
         DailyAttendance.date == attendance_date
     ).first()
     
-    # Determine check-in time based on status
+    # Determine check-in time based on status (aligned to current attendance window)
     from datetime import time as dt_time
     if request.status == "present":
-        check_time = dt_time(9, 15)  # On-time
+        check_time = dt_time(11, 0)  # On-time (within present window)
     elif request.status == "late":
-        check_time = dt_time(9, 45)  # Late
+        check_time = dt_time(11, 30)  # Late (within late window)
     else:
         check_time = dt_time(23, 59)  # Absent - end of day
     
     if existing:
-        # Update existing record
+        # Update existing record with audit trail
         existing.status = request.status
         existing.check_in_time = check_time
-        existing.marked_method = "admin_manual"
+        existing.marked_method = "manual"
+        existing.edited_by = request.admin_id
+        existing.edited_at = datetime.utcnow()
+        if request.notes is not None:
+            existing.notes = request.notes
     else:
         # Create new attendance record
         attendance = DailyAttendance(
@@ -676,7 +698,8 @@ def update_attendance(request: UpdateAttendanceRequest, db: Session = Depends(ge
             check_in_time=check_time,
             status=request.status,
             marked_by=None,  # Admin override
-            marked_method="admin_manual"
+            marked_method="manual",
+            notes=request.notes
         )
         db.add(attendance)
     
@@ -726,7 +749,10 @@ def get_division_attendance_for_admin(
             "roll_number": student.roll_number,
             "status": attendance.status if attendance else "unmarked",
             "check_in_time": str(attendance.check_in_time) if attendance else None,
-            "marked_method": attendance.marked_method if attendance else None
+            "marked_method": attendance.marked_method if attendance else None,
+            "notes": attendance.notes if attendance else None,
+            "edited_by": attendance.edited_by if attendance else None,
+            "edited_at": str(attendance.edited_at) if attendance and attendance.edited_at else None,
         })
     
     return {
@@ -740,6 +766,75 @@ def get_division_attendance_for_admin(
         "unmarked_count": len([r for r in attendance_records if r["status"] == "unmarked"]),
         "records": attendance_records
     }
+
+
+@router.put("/attendance/bulk")
+def bulk_update_attendance(request: BulkUpdateAttendanceRequest, db: Session = Depends(get_db)):
+    """
+    Bulk update attendance for a division on a specific date.
+    Supports marking all students or only unmarked ones.
+    """
+    from datetime import datetime, time as dt_time
+    from app.models import DailyAttendance
+
+    try:
+        attendance_date = datetime.strptime(request.date, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+
+    # Prevent future dates
+    if attendance_date > date.today():
+        raise HTTPException(status_code=400, detail="Cannot mark attendance for a future date")
+
+    if request.status not in ["present", "absent", "late"]:
+        raise HTTPException(status_code=400, detail="Status must be 'present', 'absent', or 'late'")
+
+    # Validate division exists
+    division = db.query(Division).filter(Division.id == request.division_id).first()
+    if not division:
+        raise HTTPException(status_code=404, detail="Division not found")
+
+    # Determine check-in time
+    time_map = {"present": dt_time(11, 0), "late": dt_time(11, 30), "absent": dt_time(23, 59)}
+    check_time = time_map[request.status]
+
+    # Get target students
+    query = db.query(Student).filter(Student.division_id == request.division_id)
+    if request.student_ids:
+        query = query.filter(Student.id.in_(request.student_ids))
+    students = query.all()
+
+    updated = 0
+    skipped = 0
+    for student in students:
+        existing = db.query(DailyAttendance).filter(
+            DailyAttendance.student_id == student.id,
+            DailyAttendance.date == attendance_date
+        ).first()
+
+        if existing and request.only_unmarked:
+            skipped += 1
+            continue
+
+        if existing:
+            existing.status = request.status
+            existing.check_in_time = check_time
+            existing.marked_method = "manual"
+            existing.edited_by = request.admin_id
+            existing.edited_at = datetime.utcnow()
+        else:
+            db.add(DailyAttendance(
+                student_id=student.id,
+                division_id=request.division_id,
+                date=attendance_date,
+                check_in_time=check_time,
+                status=request.status,
+                marked_method="manual"
+            ))
+        updated += 1
+
+    db.commit()
+    return {"updated": updated, "skipped": skipped, "total": len(students)}
 
 
 # ==================== DELETE ENDPOINTS ====================

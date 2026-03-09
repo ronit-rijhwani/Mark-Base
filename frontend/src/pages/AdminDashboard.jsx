@@ -1,7 +1,7 @@
 /**
  * Complete Admin Dashboard with all management features
  */
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import Webcam from "react-webcam";
 import { adminAPI } from "../services/api";
 import "../styles/dashboard.css";
@@ -69,9 +69,36 @@ function AdminDashboard({ user, onLogout }) {
 
   // Attendance management states
   const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [attendanceDepartment, setAttendanceDepartment] = useState("");
+  const [attendanceClass, setAttendanceClass] = useState("");
   const [attendanceDivision, setAttendanceDivision] = useState("");
   const [attendanceRecords, setAttendanceRecords] = useState([]);
-  const [showAttendanceManager, setShowAttendanceManager] = useState(false);
+  const [loadingAttendance, setLoadingAttendance] = useState(false);
+  const [savingStudentId, setSavingStudentId] = useState(null);
+  const [editingNoteId, setEditingNoteId] = useState(null);
+  const [noteText, setNoteText] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
+  const [flashRowId, setFlashRowId] = useState(null);
+
+  // Computed attendance summary
+  const attendanceSummary = useMemo(() => ({
+    present: attendanceRecords.filter(r => r.status === "present").length,
+    late: attendanceRecords.filter(r => r.status === "late").length,
+    absent: attendanceRecords.filter(r => r.status === "absent").length,
+    unmarked: attendanceRecords.filter(r => r.status === "unmarked").length,
+    total: attendanceRecords.length,
+  }), [attendanceRecords]);
+
+  // Filtered lists for cascading dropdowns
+  const filteredClasses = useMemo(() => {
+    if (!attendanceDepartment) return classes;
+    return classes.filter(c => c.department_id === parseInt(attendanceDepartment));
+  }, [classes, attendanceDepartment]);
+
+  const filteredDivisions = useMemo(() => {
+    if (!attendanceClass) return divisions;
+    return divisions.filter(d => d.class_id === parseInt(attendanceClass));
+  }, [divisions, attendanceClass]);
 
   const [parentForm, setParentForm] = useState({
     student_id: "",
@@ -118,26 +145,105 @@ function AdminDashboard({ user, onLogout }) {
   // Load attendance records when division and date are selected
   const loadAttendanceRecords = async () => {
     if (!attendanceDivision || !attendanceDate) return;
+    setLoadingAttendance(true);
     try {
       const data = await adminAPI.getDivisionAttendance(attendanceDivision, attendanceDate);
       setAttendanceRecords(data.records || []);
     } catch (error) {
       showMessage("error", "Failed to load attendance records");
+    } finally {
+      setLoadingAttendance(false);
     }
   };
 
-  // Handle attendance status update
-  const handleUpdateAttendance = async (studentId, status) => {
+  // Handle attendance status update — optimistic UI with rollback
+  const handleUpdateAttendance = async (studentId, newStatus) => {
+    const prevRecords = [...attendanceRecords];
+
+    // Optimistic update
+    setAttendanceRecords(records =>
+      records.map(r =>
+        r.student_id === studentId
+          ? { ...r, status: newStatus, _saving: true }
+          : r
+      )
+    );
+    setSavingStudentId(studentId);
+
     try {
       await adminAPI.updateAttendance({
         student_id: studentId,
         date: attendanceDate,
-        status: status
+        status: newStatus,
+        admin_id: user?.id || null,
       });
-      showMessage("success", `Attendance marked as ${status}`);
-      loadAttendanceRecords();
+
+      // Clear saving state + flash success
+      setAttendanceRecords(records =>
+        records.map(r =>
+          r.student_id === studentId
+            ? { ...r, _saving: false, marked_method: "admin_manual" }
+            : r
+        )
+      );
+      setFlashRowId(studentId);
+      setTimeout(() => setFlashRowId(null), 700);
+      showMessage("success", `Marked as ${newStatus}`);
     } catch (error) {
+      // Rollback on failure
+      setAttendanceRecords(prevRecords);
       showMessage("error", error.response?.data?.detail || "Failed to update attendance");
+    } finally {
+      setSavingStudentId(null);
+    }
+  };
+
+  // Handle bulk attendance update
+  const handleBulkUpdate = async (status, onlyUnmarked = false) => {
+    const label = onlyUnmarked ? "remaining unmarked" : "ALL";
+    if (!window.confirm(
+      `Mark ${label} students as "${status}"? This will affect ${onlyUnmarked ? attendanceSummary.unmarked : attendanceSummary.total} student(s).`
+    )) return;
+
+    try {
+      const result = await adminAPI.bulkUpdateAttendance({
+        division_id: parseInt(attendanceDivision),
+        date: attendanceDate,
+        status,
+        admin_id: user?.id || null,
+        only_unmarked: onlyUnmarked,
+      });
+      showMessage("success", `Updated ${result.updated} record(s)${result.skipped ? `, ${result.skipped} skipped` : ""}`);
+      loadAttendanceRecords(); // Full refresh after bulk action
+    } catch (error) {
+      showMessage("error", error.response?.data?.detail || "Bulk update failed");
+    }
+  };
+
+  // Handle note save
+  const handleSaveNote = async (studentId, currentStatus) => {
+    setSavingNote(true);
+    try {
+      await adminAPI.updateAttendance({
+        student_id: studentId,
+        date: attendanceDate,
+        status: currentStatus,
+        admin_id: user?.id || null,
+        notes: noteText,
+      });
+      // Update local state
+      setAttendanceRecords(records =>
+        records.map(r =>
+          r.student_id === studentId ? { ...r, notes: noteText } : r
+        )
+      );
+      showMessage("success", "Note saved");
+      setEditingNoteId(null);
+      setNoteText("");
+    } catch (error) {
+      showMessage("error", error.response?.data?.detail || "Failed to save note");
+    } finally {
+      setSavingNote(false);
     }
   };
 
@@ -1898,49 +2004,149 @@ function AdminDashboard({ user, onLogout }) {
         {activeTab === "attendance" && (
           <div className="card">
             <div className="card-header">
-              <h3>Attendance Management</h3>
-              <p className="text-muted">
-                Manage student attendance by division and date. Mark students as present even if they didn't mark their attendance.
-              </p>
+              <div>
+                <h3>Attendance Management</h3>
+                <p className="text-muted" style={{ margin: 0, marginTop: '4px' }}>
+                  Select a division and date to view/edit student attendance. Mark as Present, Late, or Absent.
+                </p>
+              </div>
             </div>
-            <div className="form-box">
+
+            {/* Cascading Filters */}
+            <div className="form-box attendance-filters">
               <div className="form-row">
                 <div className="form-group">
-                  <label>Date *</label>
-                  <input
-                    type="date"
-                    value={attendanceDate}
-                    onChange={(e) => setAttendanceDate(e.target.value)}
-                  />
+                  <label>Department</label>
+                  <select
+                    value={attendanceDepartment}
+                    onChange={(e) => {
+                      setAttendanceDepartment(e.target.value);
+                      setAttendanceClass("");
+                      setAttendanceDivision("");
+                      setAttendanceRecords([]);
+                    }}
+                  >
+                    <option value="">All Departments</option>
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name} ({d.code})
+                      </option>
+                    ))}
+                  </select>
                 </div>
+
+                <div className="form-group">
+                  <label>Class</label>
+                  <select
+                    value={attendanceClass}
+                    onChange={(e) => {
+                      setAttendanceClass(e.target.value);
+                      setAttendanceDivision("");
+                      setAttendanceRecords([]);
+                    }}
+                  >
+                    <option value="">All Classes</option>
+                    {filteredClasses.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className="form-group">
                   <label>Division *</label>
                   <select
                     value={attendanceDivision}
-                    onChange={(e) => setAttendanceDivision(e.target.value)}
+                    onChange={(e) => {
+                      setAttendanceDivision(e.target.value);
+                      setAttendanceRecords([]);
+                    }}
                   >
                     <option value="">Select Division</option>
-                    {divisions.map((div) => {
-                      const cls = classes.find((c) => c.id === div.class_id);
+                    {filteredDivisions.map((d) => {
+                      const cls = classes.find((c) => c.id === d.class_id);
                       return (
-                        <option key={div.id} value={div.id}>
-                          {cls?.name || ""} {div.name}
+                        <option key={d.id} value={d.id}>
+                          {cls?.name || ""} - {d.name}
                         </option>
                       );
                     })}
                   </select>
                 </div>
+
+                <div className="form-group">
+                  <label>Date *</label>
+                  <input
+                    type="date"
+                    value={attendanceDate}
+                    max={new Date().toISOString().split('T')[0]}
+                    onChange={(e) => setAttendanceDate(e.target.value)}
+                  />
+                </div>
+
                 <div className="form-group" style={{ display: 'flex', alignItems: 'flex-end' }}>
                   <button
                     className="btn btn-primary"
                     onClick={loadAttendanceRecords}
-                    disabled={!attendanceDivision || !attendanceDate}
+                    disabled={!attendanceDivision || !attendanceDate || loadingAttendance}
                   >
-                    Load Attendance
+                    {loadingAttendance ? "Loading..." : "Load Attendance"}
                   </button>
                 </div>
               </div>
             </div>
+
+            {/* Summary Bar */}
+            {attendanceRecords.length > 0 && (
+              <div className="attendance-summary-bar">
+                <div className="summary-stats">
+                  <div className="summary-item">
+                    <span className="summary-dot present"></span>
+                    <span>Present: <strong>{attendanceSummary.present}</strong></span>
+                  </div>
+                  <div className="summary-divider"></div>
+                  <div className="summary-item">
+                    <span className="summary-dot late"></span>
+                    <span>Late: <strong>{attendanceSummary.late}</strong></span>
+                  </div>
+                  <div className="summary-divider"></div>
+                  <div className="summary-item">
+                    <span className="summary-dot absent"></span>
+                    <span>Absent: <strong>{attendanceSummary.absent}</strong></span>
+                  </div>
+                  <div className="summary-divider"></div>
+                  <div className="summary-item">
+                    <span className="summary-dot unmarked"></span>
+                    <span>Unmarked: <strong>{attendanceSummary.unmarked}</strong></span>
+                  </div>
+                  <div className="summary-divider"></div>
+                  <div className="summary-item">
+                    <span>Total: <strong>{attendanceSummary.total}</strong></span>
+                  </div>
+                </div>
+                <div className="bulk-actions">
+                  <button
+                    className="btn btn-success"
+                    onClick={() => handleBulkUpdate("present")}
+                    title="Mark ALL students as Present"
+                  >
+                    ✓ Mark All Present
+                  </button>
+                  {attendanceSummary.unmarked > 0 && (
+                    <button
+                      className="btn btn-danger"
+                      onClick={() => handleBulkUpdate("absent", true)}
+                      title="Only mark students without a record as Absent"
+                    >
+                      ✗ Mark Remaining Absent
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Student Attendance Table */}
             {attendanceRecords.length > 0 && (
               <table className="data-table">
                 <thead>
@@ -1948,64 +2154,125 @@ function AdminDashboard({ user, onLogout }) {
                     <th>Roll No</th>
                     <th>Student Name</th>
                     <th>Status</th>
-                    <th>Marked Method</th>
-                    <th>Actions</th>
+                    <th>Method</th>
+                    <th>Notes</th>
                   </tr>
                 </thead>
                 <tbody>
                   {attendanceRecords.map((record) => (
-                    <tr key={record.student_id}>
-                      <td>{record.roll_number}</td>
-                      <td>{record.student_name}</td>
-                      <td>
-                        <span
-                          className={`badge badge-${
-                            record.status === "present"
-                              ? "success"
-                              : record.status === "late"
-                              ? "warning"
-                              : record.status === "absent"
-                              ? "danger"
-                              : "secondary"
-                          }`}
-                        >
-                          {record.status}
-                        </span>
-                      </td>
-                      <td>{record.marked_method || "-"}</td>
-                      <td>
-                        <button
-                          className="btn btn-success btn-sm"
-                          onClick={() => handleUpdateAttendance(record.student_id, "present")}
-                          style={{ marginRight: '4px' }}
-                          disabled={record.status === "present"}
-                        >
-                          Mark Present
-                        </button>
-                        <button
-                          className="btn btn-warning btn-sm"
-                          onClick={() => handleUpdateAttendance(record.student_id, "late")}
-                          style={{ marginRight: '4px' }}
-                          disabled={record.status === "late"}
-                        >
-                          Mark Late
-                        </button>
-                        <button
-                          className="btn btn-danger btn-sm"
-                          onClick={() => handleUpdateAttendance(record.student_id, "absent")}
-                          disabled={record.status === "absent"}
-                        >
-                          Mark Absent
-                        </button>
-                      </td>
-                    </tr>
+                    <React.Fragment key={record.student_id}>
+                      <tr
+                        className={
+                          (record._saving ? "row-saving" : "") +
+                          (flashRowId === record.student_id ? " row-flash-success" : "")
+                        }
+                      >
+                        <td>{record.roll_number}</td>
+                        <td>{record.student_name}</td>
+                        <td>
+                          <div className="status-toggle">
+                            {["present", "late", "absent"].map((s) => (
+                              <button
+                                key={s}
+                                className={`status-pill ${s} ${record.status === s ? "active" : ""}`}
+                                onClick={() => handleUpdateAttendance(record.student_id, s)}
+                                disabled={record.status === s || record._saving}
+                                title={`Mark as ${s}`}
+                              >
+                                {record._saving && savingStudentId === record.student_id
+                                  ? <span className="pill-spinner"></span>
+                                  : s.charAt(0).toUpperCase() + s.slice(1)}
+                              </button>
+                            ))}
+                          </div>
+                        </td>
+                        <td>
+                          <span
+                            title={
+                              record.edited_at
+                                ? `Last edited: ${record.edited_at}`
+                                : ""
+                            }
+                            style={{ cursor: record.edited_at ? "help" : "default" }}
+                          >
+                            {record.marked_method || "—"}
+                          </span>
+                        </td>
+                        <td>
+                          <button
+                            className={`btn-note ${record.notes ? "has-note" : ""}`}
+                            onClick={() => {
+                              if (editingNoteId === record.student_id) {
+                                setEditingNoteId(null);
+                                setNoteText("");
+                              } else {
+                                setEditingNoteId(record.student_id);
+                                setNoteText(record.notes || "");
+                              }
+                            }}
+                            title={record.notes ? `Note: ${record.notes}` : "Add a note"}
+                          >
+                            {record.notes ? "📝" : "✏️"}
+                          </button>
+                        </td>
+                      </tr>
+                      {/* Inline Note Editor */}
+                      {editingNoteId === record.student_id && (
+                        <tr className="note-row">
+                          <td colSpan="5">
+                            <div className="note-editor">
+                              <div style={{ flex: 1 }}>
+                                <textarea
+                                  value={noteText}
+                                  onChange={(e) => setNoteText(e.target.value)}
+                                  maxLength={500}
+                                  placeholder="Add a note or reason (e.g., medical leave, late bus)..."
+                                  autoFocus
+                                />
+                                <div className="note-char-count">{noteText.length}/500</div>
+                              </div>
+                              <div className="note-actions">
+                                <button
+                                  className="btn btn-success btn-sm"
+                                  onClick={() => handleSaveNote(record.student_id, record.status)}
+                                  disabled={savingNote}
+                                  style={{ padding: '4px 12px', fontSize: '0.8rem' }}
+                                >
+                                  {savingNote ? "Saving..." : "Save"}
+                                </button>
+                                <button
+                                  className="btn btn-secondary btn-sm"
+                                  onClick={() => {
+                                    setEditingNoteId(null);
+                                    setNoteText("");
+                                  }}
+                                  style={{ padding: '4px 12px', fontSize: '0.8rem' }}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   ))}
                 </tbody>
               </table>
             )}
-            {attendanceDivision && attendanceDate && attendanceRecords.length === 0 && (
+
+            {/* Empty state */}
+            {attendanceDivision && attendanceDate && attendanceRecords.length === 0 && !loadingAttendance && (
               <div className="alert alert-info">
                 No students found in this division or no attendance records. Click "Load Attendance" to fetch records.
+              </div>
+            )}
+
+            {/* Loading state */}
+            {loadingAttendance && (
+              <div style={{ textAlign: 'center', padding: 'var(--spacing-lg)' }}>
+                <div className="spinner"></div>
+                <p className="text-muted">Loading attendance records...</p>
               </div>
             )}
           </div>

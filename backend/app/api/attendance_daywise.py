@@ -1,6 +1,6 @@
 """
 Day-wise Attendance API - FastAPI router for daily attendance operations.
-Implements 9:15-9:30 grace period logic.
+Implements 11:00-11:30 grace period logic.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -51,13 +51,13 @@ def mark_attendance(
         check_time = datetime.strptime(request.check_in_time, "%H:%M:%S").time()
         today = date.today()
         
-        # Get grace period (default 9:15-9:30)
-        grace_start = time(9, 15)
-        grace_end = time(9, 30)
-        late_cutoff = time(9, 45)
+        # Get grace period (default 11:00-11:30)
+        grace_start = time(11, 0)
+        grace_end = time(11, 29, 59)
+        late_cutoff = time(11, 44, 59)
         
         if check_time < grace_start:
-            raise HTTPException(status_code=400, detail="Attendance window opens at 9:15 AM")
+            raise HTTPException(status_code=400, detail="Attendance window opens at 11:00 AM")
             
         # Determine status
         if check_time <= grace_end:
@@ -87,14 +87,14 @@ def mark_attendance(
                 raise HTTPException(status_code=400, detail="Attendance is currently turned off for your class")
 
         
-        # Check if already marked
+        # Check if already marked (idempotent - return existing record)
         existing = db.query(DailyAttendance).filter(
             DailyAttendance.student_id == request.student_id,
             DailyAttendance.date == today
         ).first()
         
         if existing:
-            raise HTTPException(status_code=400, detail="Attendance already marked for today")
+            return existing
         
         # Create attendance record
         attendance = DailyAttendance(
@@ -112,9 +112,13 @@ def mark_attendance(
         db.refresh(attendance)
         
         return attendance
+    except HTTPException:
+        db.rollback()
+        raise  # Re-raise HTTP exceptions with their original status code
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        import traceback; traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
 
 
 @router.post("/bulk-mark")
@@ -137,7 +141,7 @@ def bulk_mark_attendance(
                     student_id=student.id,
                     division_id=request.division_id,
                     date=attendance_date,
-                    check_in_time=time(9, 15),
+                    check_in_time=time(11, 0),
                     status="present",
                     marked_by=request.marked_by,
                     marked_method="manual"
@@ -198,10 +202,10 @@ def get_division_attendance(
         AttendanceSession.date == date
     ).first()
     
-    # If the session is explicitly closed, OR it's past 9:45 today, unmarked = absent
+    # If the session is explicitly closed, OR it's past 11:45 today, unmarked = absent
     late_cutoff_passed = False
     if date == str(datetime.today().date()):
-        if datetime.now().time() > time(9, 45):
+        if datetime.now().time() >= time(11, 45):
             late_cutoff_passed = True
     elif date < str(datetime.today().date()):
         late_cutoff_passed = True # Past days are implicitly closed

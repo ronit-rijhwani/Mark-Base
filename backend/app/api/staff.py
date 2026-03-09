@@ -7,10 +7,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List, Optional
-from datetime import date, datetime
+from datetime import date, datetime, time
 
 from app.core.database import get_db
-from app.models import AttendanceSession, Division, Staff
+from app.models import AttendanceSession, Division, Staff, Student, DailyAttendance
 
 router = APIRouter(prefix="/api/staff", tags=["Staff"])
 
@@ -137,6 +137,26 @@ def close_attendance_session(
     session.status = 'closed'
     session.closed_at = datetime.utcnow()
     
+    # Finalize missing students
+    students = db.query(Student).filter(Student.division_id == session.division_id).all()
+    marked_records = db.query(DailyAttendance).filter(
+        DailyAttendance.division_id == session.division_id,
+        DailyAttendance.date == session.date
+    ).all()
+    marked_student_ids = {r.student_id for r in marked_records}
+    
+    for student in students:
+        if student.id not in marked_student_ids:
+            # Auto-ABSENT
+            db.add(DailyAttendance(
+                student_id=student.id,
+                division_id=session.division_id,
+                date=session.date,
+                status="absent",
+                check_in_time=time(23, 59, 59),
+                marked_method="system"
+            ))
+            
     db.commit()
     
     return {"message": "Attendance session closed successfully"}
