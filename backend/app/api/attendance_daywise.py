@@ -40,7 +40,18 @@ class AttendanceResponse(BaseModel):
         from_attributes = True
 
 
-@router.post("/mark", response_model=AttendanceResponse)
+def _serialize_attendance(att):
+    """Convert a DailyAttendance ORM object to a plain dict for safe serialization."""
+    return {
+        "id": att.id,
+        "student_id": att.student_id,
+        "date": str(att.date),
+        "status": att.status,
+        "check_in_time": str(att.check_in_time) if att.check_in_time else "",
+    }
+
+
+@router.post("/mark")
 def mark_attendance(
     request: MarkAttendanceRequest,
     db: Session = Depends(get_db)
@@ -51,21 +62,21 @@ def mark_attendance(
         check_time = datetime.strptime(request.check_in_time, "%H:%M:%S").time()
         today = date.today()
         
-        # Get grace period (default 11:00-11:30)
-        grace_start = time(11, 0)
-        grace_end = time(11, 29, 59)
-        late_cutoff = time(11, 44, 59)
+        # Get grace period (testing: 23:00-23:10 present, 23:10-23:20 late)
+        grace_start = time(23, 0)
+        grace_end = time(23, 10, 0)
+        late_cutoff = time(23, 20, 0)
         
         if check_time < grace_start:
-            raise HTTPException(status_code=400, detail="Attendance window opens at 11:00 AM")
+            raise HTTPException(status_code=400, detail="Attendance window opens at 11:00 PM")
             
         # Determine status
         if check_time <= grace_end:
-            status = "present"
+            att_status = "present"
         elif check_time <= late_cutoff:
-            status = "late"
+            att_status = "late"
         else:
-            status = "absent"
+            att_status = "absent"
         
         # Get student to get division_id
         student = db.query(Student).filter(Student.id == request.student_id).first()
@@ -87,14 +98,24 @@ def mark_attendance(
                 raise HTTPException(status_code=400, detail="Attendance is currently turned off for your class")
 
         
-        # Check if already marked (idempotent - return existing record)
+        # Check if already marked
         existing = db.query(DailyAttendance).filter(
             DailyAttendance.student_id == request.student_id,
             DailyAttendance.date == today
         ).first()
         
         if existing:
-            return existing
+            # If the existing record was auto-generated (system absent), update it
+            if existing.marked_method == 'system' and existing.status == 'absent':
+                existing.status = att_status
+                existing.check_in_time = check_time
+                existing.marked_by = request.marked_by
+                existing.marked_method = request.method
+                db.commit()
+                db.refresh(existing)
+                return _serialize_attendance(existing)
+            # Otherwise truly idempotent - already marked by face/manual
+            return _serialize_attendance(existing)
         
         # Create attendance record
         attendance = DailyAttendance(
@@ -102,7 +123,7 @@ def mark_attendance(
             division_id=student.division_id,
             date=today,
             check_in_time=check_time,
-            status=status,
+            status=att_status,
             marked_by=request.marked_by,
             marked_method=request.method
         )
@@ -111,7 +132,7 @@ def mark_attendance(
         db.commit()
         db.refresh(attendance)
         
-        return attendance
+        return _serialize_attendance(attendance)
     except HTTPException:
         db.rollback()
         raise  # Re-raise HTTP exceptions with their original status code
@@ -202,10 +223,10 @@ def get_division_attendance(
         AttendanceSession.date == date
     ).first()
     
-    # If the session is explicitly closed, OR it's past 11:45 today, unmarked = absent
+    # If the session is explicitly closed, OR it's past 23:20 today, unmarked = absent
     late_cutoff_passed = False
     if date == str(datetime.today().date()):
-        if datetime.now().time() >= time(11, 45):
+        if datetime.now().time() >= time(23, 20):
             late_cutoff_passed = True
     elif date < str(datetime.today().date()):
         late_cutoff_passed = True # Past days are implicitly closed

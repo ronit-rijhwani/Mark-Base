@@ -58,6 +58,21 @@ function StaffDashboard({ user, onLogout }) {
     }
   }
 
+  // Polling for dynamic updates when session is active
+  useEffect(() => {
+    let interval;
+    if (isAttendanceActive && division) {
+      interval = setInterval(() => {
+        try {
+          loadTodayAttendance()
+        } catch (e) {
+          console.error('Polling error:', e)
+        }
+      }, 5000);
+    }
+    return () => clearInterval(interval);
+  }, [isAttendanceActive, division, selectedDate]);
+
   useEffect(() => {
     if (showDivisionSelector) {
       loadAllClasses()
@@ -209,7 +224,8 @@ function StaffDashboard({ user, onLogout }) {
 
       const result = await daywiseAttendanceAPI.markAttendanceWithFace(user.staff_id, file)
       
-      setMessage({ type: 'success', text: `✅ Attendance marked for ${result.student_name}!` })
+      setMessage({ type: 'success', text: `✅ Attendance marked for ${result.student_name}! Status: ${result.status || 'recorded'}` })
+      loadTodayAttendance() // Immediately refresh the student list
       // View closes itself for 3 seconds, then resets to the 'Open Camera' button
       setTimeout(() => {
         setMessage({ type: '', text: '' })
@@ -315,8 +331,8 @@ function StaffDashboard({ user, onLogout }) {
 
   const now = new Date()
   const currentTotalMinutes = now.getHours() * 60 + now.getMinutes()
-  const windowStart = 11 * 60 + 0    // 11:00 AM
-  const windowEnd = 11 * 60 + 45      // 11:45 AM
+  const windowStart = 23 * 60 + 0     // 11:00 PM
+  const windowEnd = 23 * 60 + 20      // 11:20 PM
   
   const isBeforeWindow = currentTotalMinutes < windowStart
   const isAfterWindow = currentTotalMinutes > windowEnd
@@ -343,7 +359,7 @@ function StaffDashboard({ user, onLogout }) {
 
       <div className="dashboard-content">
         <div className="alert alert-warning" style={{ backgroundColor: '#fff3cd', color: '#856404', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #ffeeba', fontWeight: 'bold' }}>
-          📌 Note: Session must be turned on by the staff at exactly 11:00 AM. Window closes at 11:45 AM.
+          📌 Note: Session must be turned on by the staff at exactly 11:00 PM. Window closes at 11:20 PM.
         </div>
 
         {message.text && !isAttendanceActive && (
@@ -370,13 +386,13 @@ function StaffDashboard({ user, onLogout }) {
 
              {isBeforeWindow && (
                 <p style={{ color: '#888', fontStyle: 'italic', fontSize: '18px', marginTop: '20px' }}>
-                  ⏳ Attendance window opens at 11:00 AM.
+                  ⏳ Attendance window opens at 11:00 PM.
                 </p>
              )}
 
              {isAfterWindow && (
                 <p style={{ color: '#e53935', fontWeight: '600', fontSize: '18px', marginTop: '20px' }}>
-                  🚫 Attendance will start tomorrow at 11:00 AM.
+                  🚫 Attendance will start tomorrow at 11:00 PM.
                 </p>
              )}
            </div>
@@ -393,7 +409,7 @@ function StaffDashboard({ user, onLogout }) {
                     ✅ Session is active.
                     <br/>
                     <span style={{ fontSize: '0.9em', color: '#666', fontWeight: 'normal' }}>
-                      Present deadline: 11:30 AM | Late deadline: 11:45 AM
+                      Present deadline: 11:10 PM | Late deadline: 11:20 PM
                     </span>
                   </p>
                 </div>
@@ -439,6 +455,64 @@ function StaffDashboard({ user, onLogout }) {
                 )}
               </div>
             )}
+            
+            <div className="dashboard-card" style={{ marginTop: '20px' }}>
+              <h2>Student Status</h2>
+              <div className="stats-row" style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
+                <div style={{ background: '#d4edda', padding: '10px 20px', borderRadius: '8px', color: '#155724' }}>
+                  <strong>Present:</strong> {stats.present}
+                </div>
+                <div style={{ background: '#fff3cd', padding: '10px 20px', borderRadius: '8px', color: '#856404' }}>
+                  <strong>Late:</strong> {stats.late}
+                </div>
+                <div style={{ background: '#f8d7da', padding: '10px 20px', borderRadius: '8px', color: '#721c24' }}>
+                  <strong>Absent:</strong> {stats.absent}
+                </div>
+                <div style={{ background: '#e2e3e5', padding: '10px 20px', borderRadius: '8px', color: '#383d41' }}>
+                  <strong>Unmarked:</strong> {stats.unmarked}
+                </div>
+              </div>
+              <div className="table-responsive">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Roll No</th>
+                      <th>Photo</th>
+                      <th>Name</th>
+                      <th>Status</th>
+                      <th>Time</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {attendanceRecords.map(record => (
+                      <tr key={record.student_id}>
+                        <td>{record.roll_number || '-'}</td>
+                        <td>
+                          <img 
+                            src={`http://localhost:8000/api/admin/students/${record.student_id}/photo`} 
+                            alt={record.student_name || 'Student'}
+                            style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }}
+                            onError={(e) => { e.target.style.display = 'none' }}
+                          />
+                        </td>
+                        <td>{record.student_name || 'Unknown'}</td>
+                        <td>
+                          <span className={`badge ${(record.status || '') === 'present' ? 'badge-success' : (record.status || '') === 'late' ? 'badge-warning' : (record.status || '') === 'absent' ? 'badge-danger' : 'badge-secondary'}`} style={{ padding: '5px 10px', borderRadius: '4px', display: 'inline-block', minWidth: '80px', textAlign: 'center' }}>
+                            {record.status ? record.status.charAt(0).toUpperCase() + record.status.slice(1) : 'Unmarked'}
+                          </span>
+                        </td>
+                        <td>{record.check_in_time || '-'}</td>
+                      </tr>
+                    ))}
+                    {attendanceRecords.length === 0 && (
+                      <tr>
+                        <td colSpan="5" style={{ textAlign: 'center' }}>No records found.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </>
         )}
       </div>
