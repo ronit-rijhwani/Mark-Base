@@ -342,7 +342,9 @@ function AdminDashboard({ user, onLogout }) {
       email: staffMember.email || "",
       phone: staffMember.phone || "",
       department_id: staffMember.department_id?.toString() || "",
-      username: "",
+      class_id: staffMember.class_id?.toString() || "",
+      division_id: staffMember.division_id?.toString() || "",
+      username: staffMember.username || "",
       password: "",
     });
     setShowStaffForm(true);
@@ -402,6 +404,7 @@ function AdminDashboard({ user, onLogout }) {
       division_id: student.division_id?.toString() || "",
       date_of_birth: student.date_of_birth || "",
       enrollment_year: student.enrollment_year || new Date().getFullYear(),
+      username: student.username || "",
     });
     setShowStudentForm(true);
   };
@@ -464,7 +467,7 @@ function AdminDashboard({ user, onLogout }) {
       email: parent.email || "",
       phone: parent.phone || "",
       relation: parent.relation,
-      username: "",
+      username: parent.username || "",
       password: ""
     });
     setShowParentForm(true);

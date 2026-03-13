@@ -325,7 +325,25 @@ def get_staff(department_id: Optional[int] = None, db: Session = Depends(get_db)
     if department_id:
         query = query.filter(Staff.department_id == department_id)
     staff = query.all()
-    return staff
+    
+    result = []
+    for s in staff:
+        s_dict = {
+            "id": s.id,
+            "user_id": s.user_id,
+            "staff_id": s.staff_id,
+            "first_name": s.first_name,
+            "last_name": s.last_name,
+            "email": s.email,
+            "phone": s.phone,
+            "department_id": s.department_id,
+            "class_id": s.class_id,
+            "division_id": s.division_id,
+            "username": s.user.username if s.user else None,
+        }
+        result.append(s_dict)
+        
+    return result
 
 
 @router.post("/staff")
@@ -469,7 +487,36 @@ def get_students(
         query = query.join(Division).join(Class).filter(Class.department_id == department_id)
     
     students = query.all()
-    return students
+    
+    result = []
+    for student in students:
+        s_dict = {
+            "id": student.id,
+            "user_id": student.user_id,
+            "roll_number": student.roll_number,
+            "enrollment_number": student.enrollment_number,
+            "first_name": student.first_name,
+            "last_name": student.last_name,
+            "email": student.email,
+            "phone": student.phone,
+            "division_id": student.division_id,
+            "batch_id": student.batch_id,
+            "date_of_birth": str(student.date_of_birth) if student.date_of_birth else None,
+            "enrollment_year": student.enrollment_year,
+            "face_registered": student.face_registered,
+            "username": student.user.username if student.user else None,
+            "department_id": None,
+            "class_id": None
+        }
+        
+        if student.division:
+            s_dict["class_id"] = student.division.class_id
+            if student.division.class_:
+                s_dict["department_id"] = student.division.class_.department_id
+                
+        result.append(s_dict)
+        
+    return result
 
 
 @router.post("/students")

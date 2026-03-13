@@ -64,13 +64,13 @@ def mark_attendance(
         check_time = datetime.strptime(request.check_in_time, "%H:%M:%S").time()
         today = date.today()
         
-        # Get grace period: 15:00-15:15 present, 15:16-15:20 late
-        grace_start = time(15, 0)
-        grace_end = time(15, 15, 59)
-        late_cutoff = time(15, 20, 59)
+        # Get grace period: 20:30-21:00 present, 21:01-21:30 late
+        grace_start = time(20, 30)
+        grace_end = time(21, 0, 59)
+        late_cutoff = time(21, 30, 59)
         
         if check_time < grace_start:
-            raise HTTPException(status_code=400, detail="Attendance window opens at 15:00 PM")
+            raise HTTPException(status_code=400, detail="Attendance window opens at 20:30 PM")
             
         # Determine status
         if check_time <= grace_end:
@@ -246,10 +246,10 @@ def get_division_attendance(
         AttendanceSession.date == date
     ).first()
     
-    # If the session is explicitly closed, OR it's past 15:20 today, unmarked = absent
+    # If the session is explicitly closed, OR it's past 21:30 today, unmarked = absent
     late_cutoff_passed = False
     if date == str(datetime.today().date()):
-        if datetime.now().time() >= time(15, 20):
+        if datetime.now().time() >= time(21, 30):
             late_cutoff_passed = True
     elif date < str(datetime.today().date()):
         late_cutoff_passed = True # Past days are implicitly closed
@@ -316,8 +316,8 @@ def override_attendance(
     ).first()
     
     check_time_map = {
-        'present': time(15, 0),
-        'late': time(15, 16),
+        'present': time(20, 30),
+        'late': time(21, 1),
         'absent': time(23, 59)
     }
     
