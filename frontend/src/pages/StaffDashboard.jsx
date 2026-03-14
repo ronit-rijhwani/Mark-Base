@@ -353,8 +353,8 @@ function StaffDashboard({ user, onLogout }) {
 
   const now = new Date()
   const currentTotalMinutes = now.getHours() * 60 + now.getMinutes()
-  const windowStart = 20 * 60 + 30     // 20:30 (08:30 PM)
-  const windowEnd = 21 * 60 + 30      // 21:30 (09:30 PM)
+  const windowStart = 15 * 60 + 0      // 15:00 (3:00 PM)
+  const windowEnd = 15 * 60 + 15      // 15:15 (3:15 PM)
   
   const isBeforeWindow = currentTotalMinutes < windowStart
   const isAfterWindow = currentTotalMinutes > windowEnd
@@ -381,7 +381,7 @@ function StaffDashboard({ user, onLogout }) {
 
       <div className="dashboard-content">
         <div className="alert alert-warning" style={{ backgroundColor: '#fff3cd', color: '#856404', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #ffeeba', fontWeight: 'bold' }}>
-          📌 Note: Session must be turned on by the staff exactly between 20:30 (08:30 PM) & 21:30 (09:30 PM). Window closes at 21:30 (09:30 PM).
+          📌 Note: Session must be turned on by the staff exactly between 15:00 (3:00 PM) & 15:15 (3:15 PM). Window closes at 15:15 (3:15 PM).
         </div>
 
         {message.text && !isAttendanceActive && (
@@ -408,13 +408,13 @@ function StaffDashboard({ user, onLogout }) {
 
              {isBeforeWindow && (
                 <p style={{ color: '#888', fontStyle: 'italic', fontSize: '18px', marginTop: '20px' }}>
-                  ⏳ Attendance window opens at 20:30 (08:30 PM).
+                  ⏳ Attendance window opens at 15:00 (3:00 PM).
                 </p>
              )}
 
              {isAfterWindow && (
                 <p style={{ color: '#e53935', fontWeight: '600', fontSize: '18px', marginTop: '20px' }}>
-                  🚫 Attendance window has closed. Wait for tomorrow at 20:30 (08:30 PM).
+                  🚫 Attendance window has closed. Wait for tomorrow at 15:00 (3:00 PM).
                 </p>
              )}
            </div>
@@ -431,7 +431,7 @@ function StaffDashboard({ user, onLogout }) {
                     ✅ Session is active.
                     <br/>
                     <span style={{ fontSize: '0.9em', color: '#666', fontWeight: 'normal' }}>
-                      Present deadline: 21:00 (09:00 PM) | Late deadline: 21:30 (09:30 PM)
+                      Present deadline: 15:10 (3:10 PM) | Late deadline: 15:15 (3:15 PM)
                     </span>
                   </p>
                 </div>
