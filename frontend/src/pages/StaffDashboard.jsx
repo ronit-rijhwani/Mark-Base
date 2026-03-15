@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import Webcam from 'react-webcam'
 import api, { staffAPI, daywiseAttendanceAPI, adminAPI } from '../services/api'
+import ThemeToggle from '../components/ThemeToggle'
 import '../styles/dashboard.css'
 
 function StaffDashboard({ user, onLogout }) {
@@ -294,7 +295,10 @@ function StaffDashboard({ user, onLogout }) {
             <h1>Staff Dashboard</h1>
             <p className="welcome-text">Welcome, {user.name}</p>
           </div>
-          <button onClick={onLogout} className="btn btn-secondary">Logout</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <ThemeToggle />
+            <button onClick={onLogout} className="btn btn-secondary">Logout</button>
+          </div>
         </div>
 
         <div className="dashboard-content">
@@ -368,6 +372,7 @@ function StaffDashboard({ user, onLogout }) {
           <p className="class-info">Class: {division.class_name} - Division {division.name}</p>
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <ThemeToggle />
           <button
             onClick={() => { setDivision(null); setShowDivisionSelector(true); setStudents([]); setAttendanceRecords([]); }}
             className="btn btn-secondary"

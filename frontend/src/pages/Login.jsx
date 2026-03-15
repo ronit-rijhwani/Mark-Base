@@ -7,6 +7,7 @@ import React, { useState, useRef } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 import Webcam from 'react-webcam'
 import { authAPI } from '../services/api'
+import ThemeToggle from '../components/ThemeToggle'
 import '../styles/login.css'
 
 function Login({ onLogin }) {
@@ -66,7 +67,10 @@ function Login({ onLogin }) {
 
   return (
     <div className="login-container">
-      <div className="login-card">
+      <div className="login-card" style={{ position: 'relative' }}>
+        <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
+          <ThemeToggle />
+        </div>
         <div className="login-header">
           <h1>MARKBASE</h1>
           <p>AI-Powered Attendance Management System</p>

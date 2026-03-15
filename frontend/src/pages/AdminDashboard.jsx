@@ -5,6 +5,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import Webcam from "react-webcam";
 import { adminAPI } from "../services/api";
 import AttendanceAnalytics from "./components/AttendanceAnalytics";
+import ThemeToggle from "../components/ThemeToggle";
 import "../styles/dashboard.css";
 function AdminDashboard({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState("overview");
@@ -669,9 +670,12 @@ function AdminDashboard({ user, onLogout }) {
           <h1>Admin Dashboard</h1>
           <p>System Management Portal - {user.username}</p>
         </div>
-        <button className="btn btn-danger" onClick={onLogout}>
-          Logout
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <ThemeToggle />
+          <button className="btn btn-danger" onClick={onLogout}>
+            Logout
+          </button>
+        </div>
       </div>
       <div className="container">
         {message.text && (

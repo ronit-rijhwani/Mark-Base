@@ -11,6 +11,7 @@ import React, { useState, useEffect } from 'react'
 import { parentAPI } from '../services/api'
 import { Chart as ChartJS, ArcElement, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js'
 import { Pie, Bar } from 'react-chartjs-2'
+import ThemeToggle from '../components/ThemeToggle'
 import '../styles/dashboard.css'
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
@@ -298,6 +299,7 @@ function ParentDashboard({ user, onLogout }) {
               )}
             </div>
           )}
+          <ThemeToggle />
           <button className="btn btn-danger" onClick={onLogout}>Logout</button>
         </div>
       </div>

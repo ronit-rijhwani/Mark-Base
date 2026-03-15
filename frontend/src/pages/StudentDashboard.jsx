@@ -11,6 +11,7 @@ import React, { useState, useEffect } from 'react'
 import { studentAPI } from '../services/api'
 import { Chart as ChartJS, ArcElement, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js'
 import { Pie, Bar } from 'react-chartjs-2'
+import ThemeToggle from '../components/ThemeToggle'
 import '../styles/dashboard.css'
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
@@ -100,7 +101,10 @@ function StudentDashboard({ user, onLogout }) {
           <p>Welcome, {dashboard ? dashboard.student_info.name : user.name}</p>
           <p className="text-muted">Roll: {dashboard ? dashboard.student_info.roll_number : user.roll_number}</p>
         </div>
-        <button className="btn btn-danger" onClick={onLogout}>Logout</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <ThemeToggle />
+          <button className="btn btn-danger" onClick={onLogout}>Logout</button>
+        </div>
       </div>
 
       <div className="container">
