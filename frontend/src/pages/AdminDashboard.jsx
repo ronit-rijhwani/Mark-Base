@@ -7,6 +7,7 @@ import { adminAPI } from "../services/api";
 import AttendanceAnalytics from "./components/AttendanceAnalytics";
 import ThemeToggle from "../components/ThemeToggle";
 import "../styles/dashboard.css";
+import AppShell from "../layout/AppShell";
 function AdminDashboard({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState("overview");
   const [activeSubTab, setActiveSubTab] = useState("students");
@@ -664,20 +665,30 @@ function AdminDashboard({ user, onLogout }) {
     }
   };
   return (
-    <div className="dashboard">
-      <div className="dashboard-header">
-        <div>
-          <h1>Admin Dashboard</h1>
-          <p>System Management Portal - {user.username}</p>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+    <AppShell
+      title="Admin"
+      subtitle={`System Management Portal · ${user.username}`}
+      navItems={[
+        { value: "overview", label: "Overview" },
+        { value: "structure", label: "Academic Structure" },
+        { value: "users", label: "Users" },
+        { value: "attendance", label: "Attendance" },
+      ]}
+      navValue={activeTab}
+      onNavChange={(next) => {
+        setActiveTab(next);
+        if (next === "structure") setActiveSubTab("departments");
+        if (next === "users") setActiveSubTab("students");
+      }}
+      actions={
+        <>
           <ThemeToggle />
           <button className="btn btn-danger" onClick={onLogout}>
             Logout
           </button>
-        </div>
-      </div>
-      <div className="container">
+        </>
+      }
+    >
         {message.text && (
           <div
             className={`alert alert-${message.type === "error" ? "danger" : "success"}`}
@@ -685,40 +696,6 @@ function AdminDashboard({ user, onLogout }) {
             {message.text}
           </div>
         )}
-        <div className="tabs">
-          <button
-            className={`tab ${activeTab === "overview" ? "active" : ""}`}
-            onClick={() => setActiveTab("overview")}
-          >
-            Overview
-          </button>
-          <button
-            className={`tab ${activeTab === "structure" ? "active" : ""}`}
-            onClick={() => {
-              setActiveTab("structure");
-              setActiveSubTab("departments");
-            }}
-          >
-            Academic Structure
-
-          </button>
-          <button
-            className={`tab ${activeTab === "users" ? "active" : ""}`}
-            onClick={() => {
-              setActiveTab("users");
-              setActiveSubTab("students");
-            }}
-          >
-            Users
-          </button>
-          <button
-            className={`tab ${activeTab === "attendance" ? "active" : ""}`}
-            onClick={() => setActiveTab("attendance")}
-          >
-            Attendance
-          </button>
-
-        </div>
         {/* OVERVIEW TAB */}
         {activeTab === "overview" && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
@@ -2133,9 +2110,9 @@ function AdminDashboard({ user, onLogout }) {
                       <div style={{
                         margin: '12px 0',
                         padding: '12px 16px',
-                        background: 'linear-gradient(135deg, #f0f4ff 0%, #e8ecff 100%)',
+                        background: 'linear-gradient(135deg, rgba(5, 150, 105, 0.10) 0%, rgba(124, 58, 237, 0.10) 100%)',
                         borderRadius: '8px',
-                        border: '1px solid #d5ddff'
+                        border: '1px solid rgba(124, 58, 237, 0.25)'
                       }}>
                         <div style={{ fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '8px' }}>
                           Children Added ({selectedChildren.length}):
@@ -2616,7 +2593,7 @@ function AdminDashboard({ user, onLogout }) {
                             }}
                             title={record.notes ? `Note: ${record.notes}` : "Add a note"}
                           >
-                            {record.notes ? "📝" : "✏️"}
+                            {record.notes ? "Note" : "Add"}
                           </button>
                         </td>
                       </tr>
@@ -2681,8 +2658,7 @@ function AdminDashboard({ user, onLogout }) {
             )}
           </div>
         )}
-      </div>
-    </div>
+    </AppShell>
   );
 }
 export default AdminDashboard;

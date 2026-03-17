@@ -13,6 +13,8 @@ import { Chart as ChartJS, ArcElement, CategoryScale, LinearScale, BarElement, T
 import { Pie, Bar } from 'react-chartjs-2'
 import ThemeToggle from '../components/ThemeToggle'
 import '../styles/dashboard.css'
+import Table from '../ui/Table'
+import Badge from '../ui/Badge'
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
@@ -63,7 +65,7 @@ function StudentDashboard({ user, onLogout }) {
         dashboard.overall_statistics.late,
         dashboard.overall_statistics.absent
       ],
-      backgroundColor: ['#4caf50', '#ff9800', '#f44336'],
+      backgroundColor: ['#059669', '#d97706', '#dc2626'],
       borderWidth: 0
     }]
   } : null
@@ -86,9 +88,9 @@ function StudentDashboard({ user, onLogout }) {
         return 0;
       }),
       backgroundColor: recentDays.map(a => {
-        if (a.status.toLowerCase() === 'present') return '#4caf50';
-        if (a.status.toLowerCase() === 'late') return '#ff9800';
-        return '#f44336';
+        if (a.status.toLowerCase() === 'present') return '#059669'
+        if (a.status.toLowerCase() === 'late') return '#d97706'
+        return '#dc2626'
       }),
     }]
   }
@@ -186,7 +188,7 @@ function StudentDashboard({ user, onLogout }) {
                 />
               </div>
             ) : (
-              <div style={{ padding: '20px', textAlign: 'center', color: '#888' }}>
+              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
                 No recent attendance data.
               </div>
             )}
@@ -196,38 +198,42 @@ function StudentDashboard({ user, onLogout }) {
         {/* Day-wise Details Grid */}
         <div className="card">
           <div className="card-header">Day-wise Attendance Details</div>
-          <div className="table-responsive">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Status</th>
-                  <th>Check-in Time</th>
-                  <th>Marking Method</th>
-                </tr>
-              </thead>
-              <tbody>
-                {attendance.length > 0 ? (
-                  attendance.map((att, index) => (
-                    <tr key={index}>
-                      <td>{att.date}</td>
-                      <td>
-                        <span className={`badge badge-${att.status.toLowerCase() === 'present' ? 'success' : (att.status.toLowerCase() === 'late' ? 'warning' : 'danger')}`} style={{ padding: '5px 10px', borderRadius: '4px' }}>
-                          {att.status}
-                        </span>
-                      </td>
-                      <td>{att.check_in_time !== 'N/A' && att.check_in_time !== '00:00:00' ? att.check_in_time : '-'}</td>
-                      <td>{att.marked_method !== 'unknown' ? att.marked_method.replace('_', ' ').toUpperCase() : '-'}</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="4" style={{ textAlign: 'center', padding: '20px' }}>No daily attendance records available yet.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          <Table
+            caption="Day-wise attendance details"
+            columns={[
+              { key: 'date', header: 'Date' },
+              {
+                key: 'status',
+                header: 'Status',
+                cell: (r) => (
+                  <Badge
+                    variant={
+                      r.status?.toLowerCase() === 'present'
+                        ? 'success'
+                        : r.status?.toLowerCase() === 'late'
+                        ? 'warning'
+                        : 'danger'
+                    }
+                  >
+                    {r.status}
+                  </Badge>
+                ),
+              },
+              {
+                key: 'check_in_time',
+                header: 'Check-in Time',
+                cell: (r) => (r.check_in_time !== 'N/A' && r.check_in_time !== '00:00:00' ? r.check_in_time : '-'),
+              },
+              {
+                key: 'marked_method',
+                header: 'Marking Method',
+                cell: (r) => (r.marked_method !== 'unknown' ? r.marked_method.replace('_', ' ').toUpperCase() : '-'),
+              },
+            ]}
+            rows={attendance || []}
+            rowKey={(r, i) => `${r.date}-${i}`}
+            emptyText="No daily attendance records available yet."
+          />
         </div>
       </div>
     </div>

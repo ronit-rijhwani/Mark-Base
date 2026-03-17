@@ -81,7 +81,7 @@ function AttendanceAnalytics({ data = [], departments = [], dateRange = 30, onDa
 
   if (!data || data.length === 0) {
     return (
-      <div className="card" style={{ padding: "40px", textAlign: "center", color: "#666" }}>
+      <div className="card" style={{ padding: "40px", textAlign: "center", color: "var(--text-secondary)" }}>
         No attendance records found for the global analytics engine over the past {dateRange} days.
       </div>
     );
@@ -98,7 +98,7 @@ function AttendanceAnalytics({ data = [], departments = [], dateRange = 30, onDa
             aria-label="Filter analytics by Department"
             value={selectedDept}
             onChange={(e) => setSelectedDept(e.target.value)}
-            style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #ccc" }}
+            style={{ padding: "8px 12px", borderRadius: "10px", border: "1px solid var(--border-color)", background: "var(--secondary-bg)", color: "var(--text-primary)" }}
           >
             <option value="All Departments">All Departments</option>
             {departments.map((d, i) => (
@@ -114,7 +114,7 @@ function AttendanceAnalytics({ data = [], departments = [], dateRange = 30, onDa
             aria-label="Select Date Range"
             value={dateRange}
             onChange={(e) => onDateRangeChange(parseInt(e.target.value))}
-            style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid #ccc" }}
+            style={{ padding: "8px 12px", borderRadius: "10px", border: "1px solid var(--border-color)", background: "var(--secondary-bg)", color: "var(--text-primary)" }}
           >
             <option value="7">Last 7 Days</option>
             <option value="14">Last 14 Days</option>
@@ -149,8 +149,8 @@ function AttendanceAnalytics({ data = [], departments = [], dateRange = 30, onDa
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} tabIndex={0} aria-label="Attendance rate line chart">
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eaeaea" />
-              <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#666' }} />
-              <YAxis domain={[0, 100]} tick={{ fontSize: 12, fill: '#666' }} allowDecimals={false} />
+              <XAxis dataKey="date" tick={{ fontSize: 12, fill: 'var(--text-secondary)' }} />
+              <YAxis domain={[0, 100]} tick={{ fontSize: 12, fill: 'var(--text-secondary)' }} allowDecimals={false} />
               <Tooltip
                 contentStyle={{ borderRadius: '8px', border: '1px solid #ccc', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
                 formatter={(value, name) => [name === 'AttendanceRate' ? `${value}%` : value, name === 'AttendanceRate' ? 'Attendance' : name]}

@@ -145,7 +145,7 @@ function Login({ onLogin }) {
             </button>
 
             <div className="login-hint">
-              <p>?? Admin, Staff, Parent: Use username & password</p>
+              <p>Admin, Staff, Parent: use username and password.</p>
             </div>
           </form>
         ) : (

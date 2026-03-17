@@ -25,6 +25,16 @@ export const ThemeProvider = ({ children }) => {
     }
   }, [isDarkMode]);
 
+  useEffect(() => {
+    // Phase 2 defaults (can be wired to UI later)
+    if (!document.documentElement.getAttribute('data-density')) {
+      document.documentElement.setAttribute('data-density', 'comfortable');
+    }
+    if (!document.documentElement.getAttribute('data-contrast')) {
+      document.documentElement.setAttribute('data-contrast', 'normal');
+    }
+  }, []);
+
   const toggleTheme = () => setIsDarkMode(prev => !prev);
 
   return (

@@ -239,7 +239,7 @@ function StaffDashboard({ user, onLogout }) {
 
     try {
       setIsCapturing(true)
-      setMessage({ type: 'info', text: 'Verifying face... Please wait ⏳' })
+      setMessage({ type: 'info', text: 'Verifying face... please wait.' })
 
       const imageSrc = webcamRef.current.getScreenshot()
       const blob = await fetch(imageSrc).then(r => r.blob())
@@ -247,7 +247,7 @@ function StaffDashboard({ user, onLogout }) {
 
       const result = await daywiseAttendanceAPI.markAttendanceWithFace(user.staff_id, file)
       
-      setMessage({ type: 'success', text: `✅ Attendance marked for ${result.student_name}! Status: ${result.status || 'recorded'}` })
+      setMessage({ type: 'success', text: `Attendance marked for ${result.student_name}. Status: ${result.status || 'recorded'}.` })
       loadTodayAttendance() // Immediately refresh the student list
       // View closes itself for 3 seconds, then resets to the 'Open Camera' button
       setTimeout(() => {
@@ -256,7 +256,7 @@ function StaffDashboard({ user, onLogout }) {
         setShowCamera(false)
       }, 4000) // Give them 4 seconds to read the result
     } catch (err) {
-      setMessage({ type: 'error', text: `❌ ${err.response?.data?.detail || 'Failed to mark attendance'}` })
+      setMessage({ type: 'error', text: `${err.response?.data?.detail || 'Failed to mark attendance.'}` })
       setTimeout(() => {
         setMessage({ type: '', text: '' })
         setIsCapturing(false)
@@ -385,8 +385,8 @@ function StaffDashboard({ user, onLogout }) {
       </div>
 
       <div className="dashboard-content">
-        <div className="alert alert-warning" style={{ backgroundColor: '#fff3cd', color: '#856404', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #ffeeba', fontWeight: 'bold' }}>
-          📌 Note: Session must be turned on by the staff exactly between 15:00 (3:00 PM) & 15:15 (3:15 PM). Window closes at 15:15 (3:15 PM).
+        <div className="alert alert-warning" style={{ padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid var(--border-color)', fontWeight: '600' }}>
+          Note: Session must be turned on by the staff exactly between 15:00 (3:00 PM) and 15:15 (3:15 PM). The window closes at 15:15 (3:15 PM).
         </div>
 
         {message.text && !isAttendanceActive && (
@@ -408,18 +408,18 @@ function StaffDashboard({ user, onLogout }) {
                   opacity: (isBeforeWindow || isAfterWindow) ? 0.6 : 1
                 }}
              >
-                🟢 Turn On Attendance Session
+                Turn On Attendance Session
              </button>
 
              {isBeforeWindow && (
                 <p style={{ color: '#888', fontStyle: 'italic', fontSize: '18px', marginTop: '20px' }}>
-                  ⏳ Attendance window opens at 15:00 (3:00 PM).
+                  Attendance window opens at 15:00 (3:00 PM).
                 </p>
              )}
 
              {isAfterWindow && (
                 <p style={{ color: '#e53935', fontWeight: '600', fontSize: '18px', marginTop: '20px' }}>
-                  🚫 Attendance window has closed. Wait for tomorrow at 15:00 (3:00 PM).
+                  Attendance window has closed. Wait for tomorrow at 15:00 (3:00 PM).
                 </p>
              )}
            </div>
@@ -430,12 +430,12 @@ function StaffDashboard({ user, onLogout }) {
                 <h2>Attendance Status</h2>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                   <button onClick={handleTurnOffAttendance} className="btn btn-lg btn-danger">
-                    🔴 Turn Off Attendance
+                    Turn Off Attendance
                   </button>
-                  <p className="attendance-status" style={{ margin: 0, color: '#28a745', fontWeight: 'bold' }}>
-                    ✅ Session is active.
+                  <p className="attendance-status" style={{ margin: 0, color: 'var(--success)', fontWeight: '700' }}>
+                    Session is active.
                     <br/>
-                    <span style={{ fontSize: '0.9em', color: '#666', fontWeight: 'normal' }}>
+                    <span style={{ fontSize: '0.9em', color: 'var(--text-secondary)', fontWeight: '500' }}>
                       Present deadline: 15:10 (3:10 PM) | Late deadline: 15:15 (3:15 PM)
                     </span>
                   </p>
@@ -448,8 +448,8 @@ function StaffDashboard({ user, onLogout }) {
                 <h2>Face Recognition - Active</h2>
                 
                 {isCapturing ? (
-                  <div style={{ margin: '40px 0', padding: '40px', background: '#f8f9fa', borderRadius: '12px', border: '2px solid #ddd' }}>
-                    <h3 style={{ fontSize: '26px', color: message.type === 'success' ? '#28a745' : message.type === 'error' ? '#dc3545' : '#007bff' }}>
+                  <div style={{ margin: '40px 0', padding: '40px', background: 'var(--tertiary-bg)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                    <h3 style={{ fontSize: '22px', color: message.type === 'success' ? 'var(--success)' : message.type === 'error' ? 'var(--danger)' : 'var(--text-primary)' }}>
                       {message.text}
                     </h3>
                   </div>
@@ -464,19 +464,19 @@ function StaffDashboard({ user, onLogout }) {
                         style={{ borderRadius: '8px', border: '3px solid #ddd' }}
                       />
                       <button onClick={handleMarkAttendanceWithFace} className="btn btn-success btn-lg" style={{ width: '640px', padding: '15px', fontSize: '20px' }}>
-                        📸 Capture Face &amp; Mark Attendance
+                        Capture Face and Mark Attendance
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div style={{ padding: '60px 20px', backgroundColor: '#f9f9f9', borderRadius: '10px', marginTop: '20px' }}>
-                    <p style={{ fontSize: '18px', color: '#555', marginBottom: '20px' }}>Ready for the next student to scan.</p>
+                  <div style={{ padding: '40px 20px', backgroundColor: 'var(--tertiary-bg)', borderRadius: '12px', border: '1px solid var(--border-color)', marginTop: '20px' }}>
+                    <p style={{ fontSize: '16px', color: 'var(--text-secondary)', marginBottom: '20px' }}>Ready for the next student to scan.</p>
                     <button 
                       onClick={() => setShowCamera(true)} 
                       className="btn btn-primary btn-lg"
                       style={{ padding: '20px 40px', fontSize: '22px' }}
                     >
-                      📷 Turn On Camera to Scan Face
+                      Turn On Camera to Scan Face
                     </button>
                   </div>
                 )}
@@ -540,11 +540,11 @@ function StaffDashboard({ user, onLogout }) {
                                 style={{
                                   padding: '5px 12px',
                                   borderRadius: '6px',
-                                  border: '1px solid #ccc',
+                                  border: '1px solid var(--border-color)',
                                   cursor: 'pointer',
                                   fontWeight: '600',
-                                  backgroundColor: (record.status === statusOption) ? (statusOption === 'present' ? '#28a745' : statusOption === 'late' ? '#ffc107' : '#dc3545') : '#f8f9fa',
-                                  color: (record.status === statusOption) ? '#fff' : '#495057'
+                                  backgroundColor: (record.status === statusOption) ? (statusOption === 'present' ? 'var(--success)' : statusOption === 'late' ? 'var(--warning)' : 'var(--danger)') : 'var(--secondary-bg)',
+                                  color: (record.status === statusOption) ? '#fff' : 'var(--text-primary)'
                                 }}
                               >
                                 {statusOption.charAt(0).toUpperCase() + statusOption.slice(1)}
