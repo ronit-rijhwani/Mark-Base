@@ -4,6 +4,7 @@ from app.core.config import settings
 from app.core.database import init_db
 from app.api import auth, admin, staff, student, parent, attendance_daywise
 from app.websocket_manager import manager
+import os
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -11,10 +12,26 @@ app = FastAPI(
     description="Day-wise Attendance Management System for Educational Institutions"
 )
 
-# Configure CORS - Allow all origins for development
+# Configure CORS - Allow Vercel frontend + localhost for development
+# CORS_ORIGINS env var can override this (comma-separated list)
+_cors_env = os.environ.get("CORS_ORIGINS", "")
+if _cors_env:
+    allow_origins = [o.strip() for o in _cors_env.split(",") if o.strip()]
+else:
+    allow_origins = [
+        "https://mark-base.vercel.app",
+        "https://mark-base-*.vercel.app",  # preview deployments
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001", "http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -34,6 +51,7 @@ app.include_router(attendance_daywise.router)
 @app.on_event("startup")
 async def startup_event():
     init_db()
+    _seed_default_admin()
     print("=" * 60)
     print("  MARKBASE - DAY-WISE ATTENDANCE SYSTEM")
     print("=" * 60)
@@ -47,6 +65,43 @@ async def startup_event():
     print("  WebSocket Endpoints: /ws/attendance/{session_id}")
     print("  Documentation: /docs")
     print("=" * 60)
+
+
+def _seed_default_admin():
+    """
+    Auto-create a default admin user when the database is empty.
+    This ensures Railway deployments (which start with a fresh SQLite DB) 
+    have at least one login account available immediately.
+    Credentials can be customized via ADMIN_USERNAME / ADMIN_PASSWORD env vars.
+    """
+    from app.core.database import SessionLocal
+    from app.models.user import User
+    from app.utils.security import get_password_hash
+
+    admin_username = os.environ.get("ADMIN_USERNAME", "admin")
+    admin_password = os.environ.get("ADMIN_PASSWORD", "admin123")
+
+    db = SessionLocal()
+    try:
+        existing = db.query(User).filter(User.username == admin_username).first()
+        if not existing:
+            admin_user = User(
+                username=admin_username,
+                password_hash=get_password_hash(admin_password),
+                role="admin",
+                is_active=True
+            )
+            db.add(admin_user)
+            db.commit()
+            print(f"[SEED] Default admin created: username='{admin_username}' password='{admin_password}'")
+        else:
+            print(f"[SEED] Admin user '{admin_username}' already exists, skipping.")
+    except Exception as e:
+        db.rollback()
+        print(f"[SEED] Warning: Could not seed admin user: {e}")
+    finally:
+        db.close()
+
 
 @app.websocket("/ws/attendance/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):

@@ -9,21 +9,30 @@ from sqlalchemy.orm import sessionmaker
 from .config import settings
 
 
-# Create SQLite engine with proper configuration
+# Create engine - handle both SQLite and PostgreSQL
+_db_url = settings.DATABASE_URL
+# Railway provides postgres:// but SQLAlchemy needs postgresql://
+if _db_url.startswith("postgres://"):
+    _db_url = _db_url.replace("postgres://", "postgresql://", 1)
+
+_is_sqlite = _db_url.startswith("sqlite")
+_connect_args = {"check_same_thread": False} if _is_sqlite else {}
+
 engine = create_engine(
-    settings.DATABASE_URL,
-    connect_args={"check_same_thread": False},  # Required for SQLite
+    _db_url,
+    connect_args=_connect_args,
     echo=settings.DEBUG  # Log SQL queries in debug mode
 )
 
 
-# Enable foreign key constraints for SQLite
-@event.listens_for(engine, "connect")
-def set_sqlite_pragma(dbapi_conn, connection_record):
-    """Enable foreign key constraints in SQLite."""
-    cursor = dbapi_conn.cursor()
-    cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.close()
+# Enable foreign key constraints for SQLite only
+if _is_sqlite:
+    @event.listens_for(engine, "connect")
+    def set_sqlite_pragma(dbapi_conn, connection_record):
+        """Enable foreign key constraints in SQLite."""
+        cursor = dbapi_conn.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
 
 
 # Session factory

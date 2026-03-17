@@ -1,6 +1,7 @@
 import axios from 'axios'
 
-const API_BASE_URL = 'http://mark-base-backend.railway.internal:8000'
+// Use VITE_API_URL env variable if set (for flexibility), otherwise fall back to the public Railway URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://mark-base-production.up.railway.app'
 
 
 const api = axios.create({
