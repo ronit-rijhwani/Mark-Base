@@ -1,17 +1,18 @@
 /**
  * Complete Admin Dashboard with all management features
  */
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Webcam from "react-webcam";
 import { adminAPI } from "../services/api";
 import AttendanceAnalytics from "./components/AttendanceAnalytics";
 import ThemeToggle from "../components/ThemeToggle";
+import Toast from "../components/Toast";
 import "../styles/dashboard.css";
 import AppShell from "../layout/AppShell";
 function AdminDashboard({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState("overview");
   const [activeSubTab, setActiveSubTab] = useState("students");
-  const [message, setMessage] = useState({ type: "", text: "" });
+  const [toasts, setToasts] = useState([]);
   const webcamRef = useRef(null);
   const [showCamera, setShowCamera] = useState(false);
   const [capturedImage, setCapturedImage] = useState(null);
@@ -511,10 +512,14 @@ function AdminDashboard({ user, onLogout }) {
       showMessage("error", error.response?.data?.detail || "Failed to update parent");
     }
   };
-  const showMessage = (type, text) => {
-    setMessage({ type, text });
-    setTimeout(() => setMessage({ type: "", text: "" }), 3000);
-  };
+  const removeToast = useCallback((id) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  const showMessage = useCallback((type, text) => {
+    const id = Date.now() + Math.random();
+    setToasts((prev) => [...prev, { id, type, text }]);
+  }, []);
   // Department handlers
   const handleCreateDepartment = async (e) => {
     e.preventDefault();
@@ -689,13 +694,7 @@ function AdminDashboard({ user, onLogout }) {
         </>
       }
     >
-        {message.text && (
-          <div
-            className={`alert alert-${message.type === "error" ? "danger" : "success"}`}
-          >
-            {message.text}
-          </div>
-        )}
+        <Toast toasts={toasts} onRemove={removeToast} />
         {/* OVERVIEW TAB */}
         {activeTab === "overview" && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
