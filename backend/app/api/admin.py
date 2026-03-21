@@ -72,6 +72,7 @@ class UpdateStaffRequest(BaseModel):
 
 class CreateStudentRequest(BaseModel):
     username: str
+    password: Optional[str] = None  # Optional; falls back to face-auth placeholder
     roll_number: str
     enrollment_number: Optional[str] = None
     first_name: str
@@ -558,10 +559,11 @@ def create_student(request: CreateStudentRequest, db: Session = Depends(get_db))
             detail="Username already exists"
         )
 
-    # Create user account (Students use face recognition, but DB may require a password_hash)
+    # Create user account
+    password_hash_value = get_password_hash(request.password) if request.password else "FACE_AUTH_ONLY"
     user = User(
         username=request.username,
-        password_hash="FACE_AUTH_ONLY", # Placeholder if column is NOT NULL
+        password_hash=password_hash_value,
         role="student"
     )
     db.add(user)

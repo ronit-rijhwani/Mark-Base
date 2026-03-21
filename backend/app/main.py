@@ -13,14 +13,14 @@ app = FastAPI(
 )
 
 # Configure CORS - Allow Vercel frontend + localhost for development
-# CORS_ORIGINS env var can override this (comma-separated list)
+# CORS_ORIGINS env var can override this (comma-separated list) — set this in Railway dashboard
 _cors_env = os.environ.get("CORS_ORIGINS", "")
 if _cors_env:
     allow_origins = [o.strip() for o in _cors_env.split(",") if o.strip()]
 else:
     allow_origins = [
         "https://mark-base.vercel.app",
-        "https://mark-base-*.vercel.app",  # preview deployments
+        "https://mark-base-nathwanikrishna9s-projects.vercel.app",  # Vercel team URL
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://localhost:3001",

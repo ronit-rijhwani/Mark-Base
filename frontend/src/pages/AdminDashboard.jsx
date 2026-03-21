@@ -604,6 +604,7 @@ function AdminDashboard({ user, onLogout }) {
       // Create student first (without face)
       const studentData = {
         username: studentForm.username,
+        password: studentForm.password,
         roll_number: studentForm.roll_number,
         enrollment_number: studentForm.enrollment_number,
         first_name: studentForm.first_name,
@@ -619,10 +620,20 @@ function AdminDashboard({ user, onLogout }) {
       const newStudent = await adminAPI.createStudent(studentData);
       // If face is captured, register it
       if (capturedImage) {
-        const blob = await fetch(capturedImage).then((r) => r.blob());
-        const file = new File([blob], "face.jpg", { type: "image/jpeg" });
-        await adminAPI.registerStudentFace(newStudent.id, file);
-        showMessage("success", "Student created with face registration!");
+        try {
+          const blob = await fetch(capturedImage).then((r) => r.blob());
+          const file = new File([blob], "face.jpg", { type: "image/jpeg" });
+          await adminAPI.registerStudentFace(newStudent.id, file);
+          showMessage("success", "Student created with face registration!");
+        } catch (faceError) {
+          // Student was created but face registration failed — show specific error
+          showMessage(
+            "warning",
+            `Student created, but face registration failed: ${
+              faceError.response?.data?.detail || faceError.message || "Unknown error"
+            }. You can register the face later from the student list.`
+          );
+        }
       } else {
         showMessage("success", "Student created! Register face later.");
       }
@@ -666,7 +677,7 @@ function AdminDashboard({ user, onLogout }) {
       setShowCamera(false);
       loadAllData();
     } catch (error) {
-      showMessage("error", "Failed to register face");
+      showMessage("error", error.response?.data?.detail || error.message || "Failed to register face");
     }
   };
   return (
