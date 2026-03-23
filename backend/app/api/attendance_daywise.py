@@ -54,7 +54,7 @@ def _serialize_attendance(att):
 
 
 @router.post("/mark")
-def mark_attendance(
+async def mark_attendance(
     request: MarkAttendanceRequest,
     db: Session = Depends(get_db)
 ):
@@ -117,14 +117,14 @@ def mark_attendance(
                 db.refresh(existing)
                 
                 # Broadcast WS update
-                asyncio.run(manager.broadcast({
+                await manager.broadcast({
                     "type": "ATTENDANCE_UPDATE",
                     "student_id": existing.student_id,
                     "date": str(today),
                     "status": existing.status,
                     "check_in_time": str(existing.check_in_time),
                     "marked_method": existing.marked_method
-                }, f"{student.division_id}_{str(today)}"))
+                }, f"{student.division_id}_{str(today)}")
                 
                 return _serialize_attendance(existing)
             # Cannot mark attendance multiple times if already correctly marked
@@ -151,14 +151,14 @@ def mark_attendance(
         db.refresh(attendance)
         
         # Broadcast WS update
-        asyncio.run(manager.broadcast({
+        await manager.broadcast({
             "type": "ATTENDANCE_UPDATE",
             "student_id": attendance.student_id,
             "date": str(attendance.date),
             "status": attendance.status,
             "check_in_time": str(attendance.check_in_time),
             "marked_method": attendance.marked_method
-        }, f"{student.division_id}_{str(today)}"))
+        }, f"{student.division_id}_{str(today)}")
         
         return _serialize_attendance(attendance)
     except HTTPException:
@@ -295,7 +295,7 @@ class OverrideAttendanceRequest(BaseModel):
     updated_by: int
 
 @router.patch("/override/{division_id}/{student_id}/{date}")
-def override_attendance(
+async def override_attendance(
     division_id: int,
     student_id: int,
     date_str: str,
@@ -350,13 +350,13 @@ def override_attendance(
     db.refresh(existing)
     
     # Broadcast to websocket
-    asyncio.run(manager.broadcast({
+    await manager.broadcast({
         "type": "ATTENDANCE_UPDATE",
         "student_id": student_id,
         "date": date_str,
         "status": existing.status,
         "check_in_time": str(existing.check_in_time),
         "marked_method": "manual"
-    }, f"{division_id}_{date_str}"))
+    }, f"{division_id}_{date_str}")
     
     return _serialize_attendance(existing)
