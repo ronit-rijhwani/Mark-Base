@@ -90,7 +90,7 @@ function AttendanceAnalytics({ data = [], departments = [], dateRange = 30, onDa
   return (
     <div className="analytics-container">
       {/* Controls Bar */}
-      <div className="analytics-controls" style={{ display: 'flex', gap: '20px', marginBottom: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+      <div className="analytics-controls" style={{ display: 'flex', gap: '16px', marginBottom: '20px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
         <div style={{ display: "flex", flexDirection: "column" }}>
           <label htmlFor="dept-filter" style={{ fontSize: "14px", fontWeight: "600", marginBottom: "5px" }}>Department</label>
           <select
@@ -145,7 +145,7 @@ function AttendanceAnalytics({ data = [], departments = [], dateRange = 30, onDa
       {/* Chart Section */}
       <div className="card" style={{ marginBottom: "20px" }}>
         <div className="card-header">Attendance Velocity (Rate %)</div>
-        <div className="chart-wrapper" style={{ height: "350px", width: "100%", padding: "10px" }}>
+        <div className="chart-wrapper" style={{ height: "min(350px, 50vh)", width: "100%", padding: "10px", minHeight: "250px" }}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} tabIndex={0} aria-label="Attendance rate line chart">
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eaeaea" />
@@ -169,9 +169,9 @@ function AttendanceAnalytics({ data = [], departments = [], dateRange = 30, onDa
         {/* Raw Table */}
         <div className="card">
           <div className="card-header">Log Table ({dateRange} Days)</div>
-          <div className="table-responsive" style={{ maxHeight: "350px", overflowY: "auto" }}>
+          <div className="table-responsive" style={{ maxHeight: "350px", overflowX: "auto", overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
             <table className="table" aria-label="Detailed daily metrics log table">
-              <thead style={{ position: "sticky", top: 0, backgroundColor: "#fff", zIndex: 1 }}>
+              <thead style={{ position: "sticky", top: 0, backgroundColor: "var(--secondary-bg)", zIndex: 1 }}>
                 <tr>
                   <th>Date</th>
                   <th>Rate</th>

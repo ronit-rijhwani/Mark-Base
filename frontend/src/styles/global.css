@@ -9,6 +9,10 @@
   box-sizing: border-box;
 }
 
+html {
+  overflow-x: hidden;
+}
+
 :root,
 [data-theme="dark"] {
   /* Dark theme (warm neutrals + emerald / plum / amber). */
@@ -105,6 +109,8 @@ body {
   color: var(--text-primary);
   line-height: 1.55;
   transition: background-color 240ms cubic-bezier(0.2, 0, 0, 1), color 240ms cubic-bezier(0.2, 0, 0, 1);
+  overflow-x: hidden;
+  min-width: 0;
 }
 
 /* =======================
@@ -192,6 +198,7 @@ body {
   border-bottom: 1px solid var(--border-color);
   background: color-mix(in srgb, var(--secondary-bg) 92%, transparent);
   backdrop-filter: blur(10px);
+  flex-wrap: wrap;
 }
 
 .appShell-topbarLeft {
@@ -228,6 +235,7 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .appShell-menuBtn {
@@ -265,6 +273,31 @@ body {
   }
 }
 
+@media (max-width: 768px) {
+  .appShell-topbar {
+    padding: 12px 14px;
+  }
+  .appShell-content {
+    padding: 12px;
+  }
+  .appShell-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 480px) {
+  .appShell-content {
+    padding: 10px;
+  }
+  .appShell-title {
+    font-size: 0.95rem;
+  }
+  .appShell-subtitle {
+    font-size: 0.8rem;
+  }
+}
+
 /* Screen-reader only utility */
 .sr-only {
   position: absolute;
@@ -292,6 +325,7 @@ body {
   gap: 6px;
   padding: 0;
   margin: 0;
+  word-break: break-word;
 }
 
 .breadcrumbs-item {
@@ -370,6 +404,14 @@ body {
   box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
+  max-width: 100vw;
+}
+
+@media (max-width: 640px) {
+  .drawer-panel {
+    width: 100% !important;
+    max-width: 100%;
+  }
 }
 
 .drawer-left {
@@ -419,13 +461,15 @@ body {
   }
 }
 
-/* Theme Toggle Button */
+/* Theme Toggle Button - min 44x44 for touch targets */
 .theme-toggle-btn {
   background: transparent;
   color: var(--text-primary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   padding: var(--spacing-xs) var(--spacing-sm);
+  min-width: 44px;
+  min-height: 44px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -617,6 +661,7 @@ input {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .flex-center {
@@ -738,8 +783,51 @@ input {
     grid-template-columns: 1fr;
   }
 
-  .btn {
+  /* More spacing between buttons on mobile - prevent sticky/cramped feel */
+  .form-actions {
+    gap: 12px;
+  }
+  .form-actions .btn,
+  .login-form .btn,
+  .form-box .btn:not(:last-of-type) {
     width: 100%;
+  }
+  .appShell-actions {
+    gap: 12px;
+  }
+  .card-header {
+    gap: 14px;
+  }
+  .bulk-actions,
+  .attendance-summary-bar .bulk-actions {
+    gap: 12px;
+  }
+  .attendance-summary-bar .bulk-actions .btn {
+    min-height: 44px;
+  }
+
+  /* Table scroll with touch support */
+  .table-responsive {
+    -webkit-overflow-scrolling: touch;
+    overflow-x: auto;
+  }
+
+  .table {
+    min-width: 500px;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: var(--spacing-xs);
+  }
+
+  .card {
+    padding: var(--spacing-sm);
+  }
+
+  .card-header {
+    font-size: 1.25rem;
   }
 }
 
@@ -757,6 +845,17 @@ input {
   }
 }
 
+@keyframes toastSlideInFromTop {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes toastFadeOut {
   from { opacity: 1; }
   to   { opacity: 0; }
@@ -766,11 +865,13 @@ input {
   position: fixed;
   bottom: 24px;
   right: 24px;
+  left: auto;
   z-index: 99999;
   display: flex;
   flex-direction: column-reverse;
   gap: 10px;
   pointer-events: none;
+  align-items: flex-end;
 }
 
 .toast {
@@ -839,14 +940,45 @@ input {
   border-color: color-mix(in srgb, var(--warning) 35%, transparent);
 }
 
-@media (max-width: 480px) {
+/* Mobile: Toast at TOP to avoid hiding main content (forms, tables, buttons) */
+@media (max-width: 768px) {
   .toast-container {
-    left: 16px;
-    right: 16px;
-    bottom: 16px;
+    top: max(60px, calc(env(safe-area-inset-top) + 52px));
+    bottom: auto;
+    left: 12px;
+    right: 12px;
+    flex-direction: column;
+    align-items: stretch;
+    max-height: 35vh;
+    overflow-y: auto;
   }
   .toast {
     min-width: unset;
     max-width: 100%;
+    box-shadow: var(--shadow-lg);
+    border-width: 2px;
+    animation: toastSlideInFromTop 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
+@media (max-width: 480px) {
+  .toast-container {
+    left: 10px;
+    right: 10px;
+    top: max(56px, calc(env(safe-area-inset-top) + 48px));
+  }
+  .toast {
+    padding: 12px 14px;
+    font-size: 0.9rem;
+  }
+}
+
+/* Safe area for notched devices */
+@supports (padding: env(safe-area-inset-top)) {
+  .appShell-topbar {
+    padding-left: max(14px, env(safe-area-inset-left));
+  }
+  .appShell-content {
+    padding-left: max(18px, env(safe-area-inset-left));
   }
 }

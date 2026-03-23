@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react'
 import { daywiseAttendanceAPI } from '../services/api'
 import Webcam from "react-webcam"
+import '../styles/dashboard.css'
 import { AnimatePresence, motion } from 'framer-motion'
 import { motionEase, motionDurations } from '../ui/motion'
 
@@ -50,7 +51,7 @@ const StudentAttendance = () => {
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: motionDurations.short, ease: motionEase.out }}
             className={`alert alert-${message.type === 'error' ? 'danger' : 'success'}`}
-            style={{ marginBottom: "20px" }}
+            style={{ marginBottom: "20px", width: "100%", maxWidth: "500px" }}
           >
             {message.text}
           </motion.div>
@@ -58,7 +59,7 @@ const StudentAttendance = () => {
       </AnimatePresence>
 
       {!showCamera ? (
-        <button onClick={() => setShowCamera(true)} className="btn btn-primary" style={{ padding: "15px 30px", fontSize: "16px" }}>
+        <button onClick={() => setShowCamera(true)} className="btn btn-primary" style={{ padding: "15px 30px", fontSize: "16px", width: "100%", maxWidth: "400px" }}>
           Start Camera and Mark Attendance
         </button>
       ) : (
@@ -68,21 +69,23 @@ const StudentAttendance = () => {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 8 }}
           transition={{ duration: motionDurations.base, ease: motionEase.out }}
-          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}
+          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', width: '100%', maxWidth: '100%' }}
         >
-          <Webcam
-            audio={false}
-            ref={webcamRef}
-            screenshotFormat="image/jpeg"
-            width={400}
-            height={300}
-            style={{ borderRadius: "12px", border: "1px solid var(--border-color)" }}
-          />
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={captureAndMark} className="btn btn-success">
+          <div style={{ width: '100%', maxWidth: '100%', overflow: 'hidden', borderRadius: '12px' }}>
+            <Webcam
+              audio={false}
+              ref={webcamRef}
+              screenshotFormat="image/jpeg"
+              width={400}
+              height={300}
+              style={{ width: '100%', maxWidth: '100%', height: 'auto', borderRadius: "12px", border: "1px solid var(--border-color)" }}
+            />
+          </div>
+          <div className="camera-action-buttons" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center', width: '100%', maxWidth: '400px' }}>
+            <button onClick={captureAndMark} className="btn btn-success" style={{ flex: '1', minWidth: '140px' }}>
               Capture and Mark Present
             </button>
-            <button onClick={() => setShowCamera(false)} className="btn btn-secondary">
+            <button onClick={() => setShowCamera(false)} className="btn btn-secondary" style={{ flex: '1', minWidth: '100px' }}>
               Cancel
             </button>
           </div>

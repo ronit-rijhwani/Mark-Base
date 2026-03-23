@@ -179,12 +179,13 @@ function ParentDashboard({ user, onLogout }) {
                     onClick={() => setChildDropdownOpen(false)}
                   />
                   <div
-                    className="card"
+                    className="card child-dropdown-card"
                     style={{
                       position: 'absolute',
                       top: 'calc(100% + 8px)',
                       right: 0,
-                      minWidth: 280,
+                      minWidth: 200,
+                      maxWidth: 'min(320px, calc(100vw - 32px))',
                       zIndex: 100,
                       padding: 0,
                       overflow: 'hidden',

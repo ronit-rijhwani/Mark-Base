@@ -295,7 +295,7 @@ function StaffDashboard({ user, onLogout }) {
             <h1>Staff Dashboard</h1>
             <p className="welcome-text">Welcome, {user.name}</p>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div className="dashboard-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
             <ThemeToggle />
             <button onClick={onLogout} className="btn btn-secondary">Logout</button>
           </div>
@@ -371,7 +371,7 @@ function StaffDashboard({ user, onLogout }) {
           <p className="welcome-text">Welcome, {user.name}</p>
           <p className="class-info">Class: {division.class_name} - Division {division.name}</p>
         </div>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <div className="dashboard-header-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           <ThemeToggle />
           <button
             onClick={() => { setDivision(null); setShowDivisionSelector(true); setStudents([]); setAttendanceRecords([]); }}
@@ -385,7 +385,7 @@ function StaffDashboard({ user, onLogout }) {
       </div>
 
       <div className="dashboard-content">
-        <div className="alert alert-warning" style={{ padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid var(--border-color)', fontWeight: '600' }}>
+        <div className="alert alert-warning staff-session-note" style={{ padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid var(--border-color)', fontWeight: '600', fontSize: 'clamp(0.85rem, 2vw, 1rem)' }}>
           Note: Session must be turned on by the staff exactly between 15:00 (3:00 PM) and 15:15 (3:15 PM). The window closes at 15:15 (3:15 PM).
         </div>
 
@@ -396,14 +396,16 @@ function StaffDashboard({ user, onLogout }) {
         )}
 
         {!isAttendanceActive ? (
-           <div style={{ textAlign: 'center', marginTop: '50px' }}>
+           <div className="attendance-turn-on-section" style={{ textAlign: 'center', marginTop: '50px', padding: '0 10px' }}>
              <button 
                 onClick={handleTurnOnAttendance} 
                 disabled={isBeforeWindow || isAfterWindow}
                 className={`btn btn-lg ${(!isBeforeWindow && !isAfterWindow) ? 'btn-success' : 'btn-secondary'}`} 
                 style={{ 
-                  padding: '20px 50px', 
-                  fontSize: '24px', 
+                  padding: '16px 24px', 
+                  fontSize: 'clamp(1rem, 4vw, 1.5rem)', 
+                  width: '100%',
+                  maxWidth: '400px',
                   cursor: (isBeforeWindow || isAfterWindow) ? 'not-allowed' : 'pointer',
                   opacity: (isBeforeWindow || isAfterWindow) ? 0.6 : 1
                 }}
@@ -426,17 +428,17 @@ function StaffDashboard({ user, onLogout }) {
         ) : (
           <>
             <div className="dashboard-card">
-              <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="card-header attendance-status-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
                 <h2>Attendance Status</h2>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                  <button onClick={handleTurnOffAttendance} className="btn btn-lg btn-danger">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                  <button onClick={handleTurnOffAttendance} className="btn btn-lg btn-danger" style={{ flexShrink: 0 }}>
                     Turn Off Attendance
                   </button>
-                  <p className="attendance-status" style={{ margin: 0, color: 'var(--success)', fontWeight: '700' }}>
+                  <p className="attendance-status" style={{ margin: 0, color: 'var(--success)', fontWeight: '700', fontSize: 'clamp(0.85rem, 2vw, 1rem)' }}>
                     Session is active.
                     <br/>
                     <span style={{ fontSize: '0.9em', color: 'var(--text-secondary)', fontWeight: '500' }}>
-                      Present deadline: 15:10 (3:10 PM) | Late deadline: 15:15 (3:15 PM)
+                      Present deadline: 15:10 | Late deadline: 15:15
                     </span>
                   </p>
                 </div>
@@ -455,26 +457,28 @@ function StaffDashboard({ user, onLogout }) {
                   </div>
                 ) : showCamera ? (
                   <div className="camera-section">
-                    <div className="camera-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', marginTop: '15px' }}>
-                      <Webcam
-                        ref={webcamRef}
-                        screenshotFormat="image/jpeg"
-                        width={640}
-                        height={480}
-                        style={{ borderRadius: '8px', border: '3px solid #ddd' }}
-                      />
-                      <button onClick={handleMarkAttendanceWithFace} className="btn btn-success btn-lg" style={{ width: '640px', padding: '15px', fontSize: '20px' }}>
+                    <div className="camera-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', marginTop: '15px', width: '100%', maxWidth: '100%' }}>
+                      <div style={{ width: '100%', maxWidth: '100%', overflow: 'hidden', borderRadius: '8px' }}>
+                        <Webcam
+                          ref={webcamRef}
+                          screenshotFormat="image/jpeg"
+                          width={640}
+                          height={480}
+                          style={{ width: '100%', maxWidth: '100%', height: 'auto', borderRadius: '8px', border: '3px solid var(--border-color)' }}
+                        />
+                      </div>
+                      <button onClick={handleMarkAttendanceWithFace} className="btn btn-success btn-lg" style={{ width: '100%', maxWidth: '400px', padding: '15px', fontSize: 'clamp(1rem, 3vw, 1.25rem)' }}>
                         Capture Face and Mark Attendance
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div style={{ padding: '40px 20px', backgroundColor: 'var(--tertiary-bg)', borderRadius: '12px', border: '1px solid var(--border-color)', marginTop: '20px' }}>
+                  <div style={{ padding: '40px 20px', backgroundColor: 'var(--tertiary-bg)', borderRadius: '12px', border: '1px solid var(--border-color)', marginTop: '20px', width: '100%' }}>
                     <p style={{ fontSize: '16px', color: 'var(--text-secondary)', marginBottom: '20px' }}>Ready for the next student to scan.</p>
                     <button 
                       onClick={() => setShowCamera(true)} 
                       className="btn btn-primary btn-lg"
-                      style={{ padding: '20px 40px', fontSize: '22px' }}
+                      style={{ padding: '16px 24px', fontSize: 'clamp(1rem, 3vw, 1.25rem)', width: '100%', maxWidth: '400px' }}
                     >
                       Turn On Camera to Scan Face
                     </button>
@@ -485,7 +489,7 @@ function StaffDashboard({ user, onLogout }) {
             
             <div className="dashboard-card" style={{ marginTop: '20px' }}>
               <h2>Student Status</h2>
-              <div className="stats-row" style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
+              <div className="stats-row" style={{ display: 'flex', gap: '15px', marginBottom: '20px', flexWrap: 'wrap' }}>
                 <div style={{ background: '#d4edda', padding: '10px 20px', borderRadius: '8px', color: '#155724' }}>
                   <strong>Present:</strong> {stats.present}
                 </div>
@@ -526,7 +530,7 @@ function StaffDashboard({ user, onLogout }) {
                         )}
                         <td>{record.student_name || 'Unknown'}</td>
                         <td>
-                          <div style={{ display: 'flex', gap: '8px' }}>
+                          <div className="status-buttons-wrap" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                             {['present', 'late', 'absent'].map(statusOption => (
                               <button
                                 key={statusOption}

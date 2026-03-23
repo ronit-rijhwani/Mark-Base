@@ -5,10 +5,12 @@
 import React, { useEffect } from "react";
 
 function ToastItem({ toast, onRemove }) {
+  // Warning/error messages stay longer for readability (especially on mobile)
+  const duration = toast.type === 'warning' || toast.type === 'error' ? 7000 : 5000;
   useEffect(() => {
-    const timer = setTimeout(() => onRemove(toast.id), 4000);
+    const timer = setTimeout(() => onRemove(toast.id), duration);
     return () => clearTimeout(timer);
-  }, [toast.id, onRemove]);
+  }, [toast.id, onRemove, duration]);
 
   const iconMap = {
     success: (

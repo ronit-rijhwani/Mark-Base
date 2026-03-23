@@ -808,6 +808,7 @@ function AdminDashboard({ user, onLogout }) {
                     </button>
                   </form>
                 )}
+                <div className="table-responsive">
                 <table className="data-table">
                   <thead>
                     <tr>
@@ -855,6 +856,7 @@ function AdminDashboard({ user, onLogout }) {
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
             {activeSubTab === "classes" && (
@@ -925,6 +927,7 @@ function AdminDashboard({ user, onLogout }) {
                     </div>
                   </form>
                 )}
+                <div className="table-responsive">
                 <table className="data-table">
                   <thead>
                     <tr>
@@ -989,6 +992,7 @@ function AdminDashboard({ user, onLogout }) {
                     )}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
             {activeSubTab === "divisions" && (
@@ -1084,6 +1088,7 @@ function AdminDashboard({ user, onLogout }) {
                     </div>
                   </form>
                 )}
+                <div className="table-responsive">
                 <table className="data-table">
                   <thead>
                     <tr>
@@ -1160,6 +1165,7 @@ function AdminDashboard({ user, onLogout }) {
                     )}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
           </div>
@@ -1542,6 +1548,7 @@ function AdminDashboard({ user, onLogout }) {
                     </div>
                   </form>
                 )}
+                <div className="table-responsive">
                 <table className="data-table">
                   <thead>
                     <tr>
@@ -1575,10 +1582,10 @@ function AdminDashboard({ user, onLogout }) {
                           </td>
                           <td>{student.face_registered ? "Yes" : "No"}</td>
                           <td>
+                            <div className="user-action-buttons">
                             <button
                               className="btn btn-warning btn-sm"
                               onClick={() => handleEditStudent(student)}
-                              style={{ marginRight: '8px' }}
                             >
                               Edit
                             </button>
@@ -1608,12 +1615,14 @@ function AdminDashboard({ user, onLogout }) {
                             >
                               Delete
                             </button>
+                            </div>
                           </td>
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
             {/* STAFF */}
@@ -1820,6 +1829,7 @@ function AdminDashboard({ user, onLogout }) {
                     </div>
                   </form>
                 )}
+                <div className="table-responsive">
                 <table className="data-table">
                   <thead>
                     <tr>
@@ -1848,10 +1858,10 @@ function AdminDashboard({ user, onLogout }) {
                               : s.department_id}
                           </td>
                           <td>
+                            <div className="user-action-buttons">
                             <button
                               className="btn btn-warning btn-sm"
                               onClick={() => handleEditStaff(s)}
-                              style={{ marginRight: '8px' }}
                             >
                               Edit
                             </button>
@@ -1881,12 +1891,14 @@ function AdminDashboard({ user, onLogout }) {
                             >
                               Delete
                             </button>
+                            </div>
                           </td>
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
             {/* PARENTS */}
@@ -2298,6 +2310,7 @@ function AdminDashboard({ user, onLogout }) {
                     </div>
                   </form>
                 )}
+                <div className="table-responsive">
                 <table className="data-table">
                   <thead>
                     <tr>
@@ -2346,10 +2359,10 @@ function AdminDashboard({ user, onLogout }) {
                               <td>{parent.username || "-"}</td>
                             )}
                             <td>
+                              <div className="user-action-buttons">
                               <button
                                 className="btn btn-warning btn-sm"
                                 onClick={() => handleEditParent(parent)}
-                                style={{ marginRight: '8px' }}
                               >
                                 Edit
                               </button>
@@ -2379,6 +2392,7 @@ function AdminDashboard({ user, onLogout }) {
                               >
                                 Delete
                               </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -2386,6 +2400,7 @@ function AdminDashboard({ user, onLogout }) {
                     )}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
           </div>
@@ -2538,6 +2553,7 @@ function AdminDashboard({ user, onLogout }) {
 
             {/* Student Attendance Table */}
             {attendanceRecords.length > 0 && (
+              <div className="table-responsive">
               <table className="data-table">
                 <thead>
                   <tr>
@@ -2649,6 +2665,7 @@ function AdminDashboard({ user, onLogout }) {
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
 
             {/* Empty state */}

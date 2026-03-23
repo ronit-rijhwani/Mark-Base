@@ -187,6 +187,7 @@
 /* Tables */
 .table-responsive {
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
   background: var(--secondary-bg);
@@ -223,6 +224,9 @@
   gap: var(--spacing-sm);
   margin-bottom: var(--spacing-md);
   border-bottom: 1px solid var(--border-color);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 2px;
 }
 
 .subtabs button {
@@ -233,6 +237,8 @@
   cursor: pointer;
   border-bottom: 2px solid transparent;
   margin-bottom: -2px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .subtabs button.active {
@@ -315,12 +321,28 @@
   margin-top: var(--spacing-md);
 }
 
-/* Data Table */
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
+/* Data Table - wrap in overflow container for horizontal scroll on mobile */
+.data-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
   margin-top: var(--spacing-md);
 }
+
+.data-table {
+  width: 100%;
+  min-width: 400px;
+  border-collapse: collapse;
+  margin-top: 0;
+}
+
+/* Table scroll container - wrap data-table in table-responsive for horizontal scroll */
+.table-responsive .data-table,
+.table-responsive .table {
+  margin-top: 0;
+}
+
 
 .data-table thead {
   background-color: var(--tertiary-bg);
@@ -343,12 +365,22 @@
   background-color: var(--tertiary-bg);
 }
 
+/* Users section: Edit + Delete button group */
+.user-action-buttons {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
 /* Card Header */
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: var(--spacing-md);
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
 }
 
 .card-header h3 {
@@ -483,8 +515,10 @@
 }
 
 .face-guide-circle {
-  width: 250px;
-  height: 250px;
+  width: min(250px, 70vw);
+  height: min(250px, 70vw);
+  max-width: 250px;
+  max-height: 250px;
   border: 4px dashed white;
   border-radius: 50%;
   margin: 0 auto var(--spacing-sm);
@@ -814,6 +848,14 @@
     align-items: flex-start;
   }
 
+  .dashboard-header > div:last-child,
+  .dashboard-header-actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
   .session-stats {
     grid-template-columns: 1fr;
   }
@@ -838,19 +880,149 @@
   .attendance-summary-bar .bulk-actions {
     margin-left: 0;
     width: 100%;
+    gap: 12px;
   }
 
   .attendance-summary-bar .bulk-actions .btn {
     flex: 1;
+    min-height: 44px;
+  }
+
+  .form-actions {
+    gap: 12px;
   }
 
   .status-toggle {
     flex-direction: column;
+    gap: 6px;
   }
 
   .status-pill:not(:last-child) {
     border-right: none;
     border-bottom: 1px solid var(--border-color);
+  }
+
+  .status-pill {
+    padding: 8px 12px;
+    min-height: 40px;
+  }
+
+  /* Note editor in attendance - stack on mobile */
+  .note-editor {
+    flex-direction: column;
+  }
+
+  .note-editor .note-actions {
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+
+  /* Stats row in StaffDashboard and similar */
+  .stats-row {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .stats-row > div {
+    flex: 1 1 calc(50% - 12px);
+    min-width: 120px;
+  }
+
+  /* Button groups in tables - add spacing between Present/Late/Absent pills */
+  .status-toggle {
+    gap: 4px;
+  }
+  td .status-toggle,
+  .status-buttons-wrap {
+    margin: 4px 0;
+    gap: 10px;
+  }
+
+  /* Users section: Edit + Delete buttons - more spacing on mobile */
+  .user-action-buttons {
+    gap: 14px;
+  }
+
+  /* Camera/Webcam responsive */
+  .camera-container video,
+  .camera-container canvas,
+  .webcam-container video {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-content {
+    padding: var(--spacing-sm);
+  }
+
+  .stats-row > div {
+    flex: 1 1 100%;
+  }
+
+  .stats-row {
+    gap: 10px;
+  }
+
+  .session-stats {
+    gap: var(--spacing-sm);
+  }
+
+  .chart-container {
+    height: 250px;
+  }
+
+  /* Extra button spacing on very small screens */
+  .form-actions,
+  .bulk-actions {
+    gap: 14px;
+  }
+
+  .card-header {
+    gap: 16px;
+  }
+
+  .user-action-buttons {
+    gap: 16px;
+  }
+}
+
+/* Camera/action button groups - comfortable spacing on mobile */
+.camera-action-buttons {
+  gap: 12px;
+}
+@media (max-width: 480px) {
+  .camera-action-buttons {
+    gap: 14px;
+  }
+}
+
+/* Student attendance page (standalone /student-attendance route) */
+.student-attendance {
+  min-height: 100vh;
+  padding: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(5, 150, 105, 0.18) 0%, rgba(124, 58, 237, 0.16) 100%);
+}
+
+.student-attendance h1 {
+  font-size: 1.5rem;
+  text-align: center;
+  margin-bottom: var(--spacing-md);
+  color: var(--text-primary);
+}
+
+@media (max-width: 480px) {
+  .student-attendance {
+    padding: var(--spacing-sm);
+  }
+
+  .student-attendance h1 {
+    font-size: 1.25rem;
   }
 }
 

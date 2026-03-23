@@ -141,8 +141,8 @@ function Login({ onLogin }) {
 
   return (
     <div className="login-container">
-      <div className="login-card" style={{ position: 'relative' }}>
-        <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
+      <div className="login-card login-card-with-theme" style={{ position: 'relative' }}>
+        <div className="login-theme-toggle" style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
           <ThemeToggle />
         </div>
         <div className="login-header">
