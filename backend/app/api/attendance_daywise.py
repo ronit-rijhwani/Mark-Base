@@ -63,20 +63,18 @@ async def mark_attendance(
         # Parse time and date
         check_time = datetime.strptime(request.check_in_time, "%H:%M:%S").time()
         today = date.today()
-        
-        # Attendance window: 9:15-10:15 present, 10:16-11:00 late, after 11:00 absent
-        grace_start = time(9, 15)
-        grace_end = time(10, 15, 59)
-        late_cutoff = time(11, 0, 59)
-        
+        # Attendance window: 9:00-18:00 present, 18:01-18:30 absent (late is effectively absent), after 18:30 session closed/absent
+        grace_start = time(9, 0)
+        grace_end = time(18, 0, 59)
+        late_cutoff = time(18, 30, 59)
         if check_time < grace_start:
-            raise HTTPException(status_code=400, detail="Attendance window opens at 09:15 AM")
+            raise HTTPException(status_code=400, detail="Attendance window opens at 09:00 AM")
             
         # Determine status
         if check_time <= grace_end:
             att_status = "present"
         elif check_time <= late_cutoff:
-            att_status = "late"
+            att_status = "absent"
         else:
             att_status = "absent"
         
@@ -251,10 +249,10 @@ def get_division_attendance(
         AttendanceSession.date == date
     ).first()
     
-    # If the session is explicitly closed, OR it's past 11:01 today, unmarked = absent
+    # If the session is explicitly closed, OR it's past 18:31 today, unmarked = absent
     late_cutoff_passed = False
     if date == str(datetime.today().date()):
-        if datetime.now().time() >= time(11, 1):
+        if datetime.now().time() >= time(18, 31):
             late_cutoff_passed = True
     elif date < str(datetime.today().date()):
         late_cutoff_passed = True # Past days are implicitly closed
@@ -321,8 +319,8 @@ async def override_attendance(
     ).first()
     
     check_time_map = {
-        'present': time(9, 15),
-        'late': time(10, 16),
+        'present': time(9, 0),
+        'late': time(18, 1),
         'absent': time(23, 59)
     }
     

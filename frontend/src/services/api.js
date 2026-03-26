@@ -182,6 +182,15 @@ export const adminAPI = {
     return response.data
   },
 
+  checkFaceUnique: async (imageFile) => {
+    const formData = new FormData()
+    formData.append('image', imageFile)
+    const response = await api.post(`/api/auth/check-face-unique`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return response.data
+  },
+
   // Parents
   getParents: async () => {
     const response = await api.get('/api/admin/parents')

@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     
     # Face Recognition (AI Feature)
     FACE_ENCODING_PATH: str = "./face_encodings"
-    FACE_TOLERANCE: float = 0.6
+    FACE_TOLERANCE: float = 0.45
     UPLOAD_PATH: str = "./uploads"
     
     # Server

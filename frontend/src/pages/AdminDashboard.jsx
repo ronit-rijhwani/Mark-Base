@@ -600,6 +600,22 @@ function AdminDashboard({ user, onLogout }) {
         showMessage("error", "Please select Department, Class, and Division");
         return;
       }
+
+      let faceFile = null;
+      if (capturedImage) {
+        try {
+          const blob = await fetch(capturedImage).then((r) => r.blob());
+          faceFile = new File([blob], "face.jpg", { type: "image/jpeg" });
+          
+          // Pre-check if face is unique before allowing account creation
+          await adminAPI.checkFaceUnique(faceFile);
+        } catch (faceValError) {
+          const errMsg = faceValError.response?.data?.detail || faceValError.message || "Face validation failed";
+          showMessage("error", `Cannot create student: ${errMsg}`);
+          return;
+        }
+      }
+
       // Create student first (without face)
       const studentData = {
         username: studentForm.username,
@@ -618,11 +634,9 @@ function AdminDashboard({ user, onLogout }) {
       };
       const newStudent = await adminAPI.createStudent(studentData);
       // If face is captured, register it
-      if (capturedImage) {
+      if (faceFile) {
         try {
-          const blob = await fetch(capturedImage).then((r) => r.blob());
-          const file = new File([blob], "face.jpg", { type: "image/jpeg" });
-          await adminAPI.registerStudentFace(newStudent.id, file);
+          await adminAPI.registerStudentFace(newStudent.id, faceFile);
           showMessage("success", "Student created with face registration!");
         } catch (faceError) {
           // Student was created but face registration failed — show specific error
